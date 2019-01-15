@@ -198,6 +198,7 @@ export class MockInputHandlingTerminal implements IInputHandlingTerminal {
   sgrMouse: boolean;
   urxvtMouse: boolean;
   cursorHidden: boolean;
+  linkifier: ILinkifier;
   buffers: IBufferSet;
   buffer: IBuffer = new MockBuffer();
   viewport: IViewport;

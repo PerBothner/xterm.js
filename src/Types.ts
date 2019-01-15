@@ -14,6 +14,7 @@ export type CustomKeyEventHandler = (event: KeyboardEvent) => boolean;
 export type CharData = [number, string, number, number];
 export type LineData = CharData[];
 
+// FIXME rename to LinkHandler
 export type LinkMatcherHandler = (event: MouseEvent, uri: string) => void;
 export type LinkMatcherValidationCallback = (uri: string, callback: (isValid: boolean) => void) => void;
 
@@ -59,6 +60,7 @@ export interface IInputHandlingTerminal extends IEventEmitter {
   sgrMouse: boolean;
   urxvtMouse: boolean;
   cursorHidden: boolean;
+  linkifier: ILinkifier;
 
   buffers: IBufferSet;
   buffer: IBuffer;
@@ -182,16 +184,31 @@ export interface IInputHandler {
       ESC ~ */ setgLevel(level: number): void;
 }
 
-export interface ILinkMatcher {
+export interface ILinkOptions {
+  handler?: LinkMatcherHandler;
+  /**
+   * A callback that fires when the mouse hovers over a link.
+   */
+  tooltipCallback?: LinkMatcherHandler;
+  /**
+   * A callback that fires when the mouse leaves a link that was hovered.
+   */
+  leaveCallback?: () => void;
+  /**
+   * A callback that fires when the mousedown and click events occur that
+   * determines whether a link will be activated upon click. This enables
+   * only activating a link when a certain modifier is held down, if not the
+   * mouse event will continue propagation (eg. double click to select word).
+   */
+  willLinkActivate?: (event: MouseEvent, uri: string) => boolean;
+}
+
+export interface ILinkMatcher extends ILinkOptions {
   id: number;
   regex: RegExp;
-  handler: LinkMatcherHandler;
-  hoverTooltipCallback?: LinkMatcherHandler;
-  hoverLeaveCallback?: () => void;
   matchIndex?: number;
   validationCallback?: LinkMatcherValidationCallback;
   priority?: number;
-  willLinkActivate?: (event: MouseEvent, uri: string) => boolean;
 }
 
 export interface ILinkHoverEvent {
@@ -326,9 +343,11 @@ export interface ILinkifier extends IEventEmitter {
   linkifyRows(start: number, end: number): void;
   registerLinkMatcher(regex: RegExp, handler: LinkMatcherHandler, options?: ILinkMatcherOptions): number;
   deregisterLinkMatcher(matcherId: number): boolean;
+  doAddLink(x1: number, y1: number, x2: number, y2: number,
+            matcher: ILinkOptions, uri: string, fg: number): void;
 }
 
-export interface ILinkMatcherOptions {
+export interface ILinkMatcherOptions extends ILinkOptions {
   /**
    * The index of the link from the regex.match(text) call. This defaults to 0
    * (for regular expressions without capture groups).
@@ -340,26 +359,11 @@ export interface ILinkMatcherOptions {
    */
   validationCallback?: LinkMatcherValidationCallback;
   /**
-   * A callback that fires when the mouse hovers over a link.
-   */
-  tooltipCallback?: LinkMatcherHandler;
-  /**
-   * A callback that fires when the mouse leaves a link that was hovered.
-   */
-  leaveCallback?: () => void;
-  /**
    * The priority of the link matcher, this defines the order in which the link
    * matcher is evaluated relative to others, from highest to lowest. The
    * default value is 0.
    */
   priority?: number;
-  /**
-   * A callback that fires when the mousedown and click events occur that
-   * determines whether a link will be activated upon click. This enables
-   * only activating a link when a certain modifier is held down, if not the
-   * mouse event will continue propagation (eg. double click to select word).
-   */
-  willLinkActivate?: (event: MouseEvent, uri: string) => boolean;
 }
 
 export interface IBrowser {

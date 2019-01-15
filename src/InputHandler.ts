@@ -4,10 +4,10 @@
  * @license MIT
  */
 
-import { IInputHandler, IDcsHandler, IEscapeSequenceParser, IBuffer, IInputHandlingTerminal } from './Types';
+import { IInputHandler, IDcsHandler, IEscapeSequenceParser, IBuffer, IInputHandlingTerminal, ILinkOptions } from './Types';
 import { C0, C1 } from './common/data/EscapeSequences';
 import { CHARSETS, DEFAULT_CHARSET } from './core/data/Charsets';
-import { CHAR_DATA_CHAR_INDEX, CHAR_DATA_WIDTH_INDEX, CHAR_DATA_CODE_INDEX, DEFAULT_ATTR, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE } from './Buffer';
+import { CHAR_DATA_CHAR_INDEX, CHAR_DATA_WIDTH_INDEX, CHAR_DATA_CODE_INDEX, CHAR_DATA_ATTR_INDEX, DEFAULT_ATTR, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE } from './Buffer';
 import { FLAGS } from './renderer/Types';
 import { wcwidth } from './CharWidth';
 import { EscapeSequenceParser } from './EscapeSequenceParser';
@@ -115,6 +115,9 @@ class DECRQSS implements IDcsHandler {
  */
 export class InputHandler extends Disposable implements IInputHandler {
   private _surrogateFirst: string;
+  private _linkStartX: number;
+  private _linkStartY: number;
+  private _linkUri: string;
 
   constructor(
       protected _terminal: IInputHandlingTerminal,
@@ -219,6 +222,8 @@ export class InputHandler extends Disposable implements IInputHandler {
     //   5 - Change Special Color Number
     //   6 - Enable/disable Special Color Number c
     //   7 - current directory? (not in xterm spec, see https://gitlab.com/gnachman/iterm2/issues/3939)
+    //   8 - create hyperlink (https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda)
+    this._parser.setOscHandler(8, (data) => this.createHyperLink(data));
     //  10 - Change VT100 text foreground color to Pt.
     //  11 - Change VT100 text background color to Pt.
     //  12 - Change text cursor color to Pt.
@@ -1904,6 +1909,35 @@ export class InputHandler extends Disposable implements IInputHandler {
    */
   public setTitle(data: string): void {
     this._terminal.handleTitle(data);
+  }
+
+  public createHyperLink(data: string): void {
+    const m = data.match(/([^;]*);(.*)/);
+    if (!m) {
+      return;
+    }
+    // const params = m[1];
+    const uri = m[2];
+    if (uri) {
+       this._linkStartX = this._terminal.buffer.x;
+       this._linkStartY = this._terminal.buffer.y;
+       this._linkUri = uri;
+    } else {
+      const startX = this._linkStartX;
+      const startY = this._linkStartY;
+      const endX = this._terminal.buffer.x;
+      const endY = this._terminal.buffer.y;
+      const uri = this._linkUri;
+      const line = this._terminal.buffer.lines.get(startY);
+      const char = line.get(startX);
+      let fg: number | undefined;
+      if (char) {
+        const attr: number = char[CHAR_DATA_ATTR_INDEX];
+        fg = (attr >> 9) & 0x1ff;
+      }
+      const options: ILinkOptions = {};
+      this._terminal.linkifier.doAddLink(startX, startY, endX, endY, options, uri, fg);
+    }
   }
 
   /**

@@ -4,7 +4,7 @@
  */
 
 import { IMouseZoneManager } from './ui/Types';
-import { ILinkHoverEvent, ILinkMatcher, LinkMatcherHandler, LinkHoverEventTypes, ILinkMatcherOptions, ILinkifier, ITerminal, IBufferStringIteratorResult } from './Types';
+import { ILinkHoverEvent, ILinkMatcher, LinkMatcherHandler, LinkHoverEventTypes, ILinkOptions, ILinkMatcherOptions, ILinkifier, ITerminal, IBufferStringIteratorResult } from './Types';
 import { MouseZone } from './ui/MouseZoneManager';
 import { EventEmitter } from './common/EventEmitter';
 import { CHAR_DATA_ATTR_INDEX } from './Buffer';
@@ -34,6 +34,7 @@ export class Linkifier extends EventEmitter implements ILinkifier {
   private _rowsTimeoutId: number;
   private _nextLinkMatcherId = 0;
   private _rowsToLinkify: { start: number, end: number };
+  private _pendingLinks = new Array();
 
   constructor(
     protected _terminal: ITerminal
@@ -118,6 +119,9 @@ export class Linkifier extends EventEmitter implements ILinkifier {
         this._doLinkifyRow(lineData.range.first, lineData.content, this._linkMatchers[i]);
       }
     }
+    for (let i = this._pendingLinks.length; --i >= 0; ) {
+      this._mouseZoneManager.add(this._pendingLinks.pop());
+    }
 
     this._rowsToLinkify.start = null;
     this._rowsToLinkify.end = null;
@@ -140,11 +144,11 @@ export class Linkifier extends EventEmitter implements ILinkifier {
     const matcher: ILinkMatcher = {
       id: this._nextLinkMatcherId++,
       regex,
-      handler,
+      handler: handler || options.handler,
       matchIndex: options.matchIndex,
       validationCallback: options.validationCallback,
-      hoverTooltipCallback: options.tooltipCallback,
-      hoverLeaveCallback: options.leaveCallback,
+      tooltipCallback: options.tooltipCallback,
+      leaveCallback: options.leaveCallback,
       willLinkActivate: options.willLinkActivate,
       priority: options.priority || 0
     };
@@ -273,15 +277,19 @@ export class Linkifier extends EventEmitter implements ILinkifier {
       x2 = this._terminal.cols;
       y2--;
     }
+    this._mouseZoneManager.add(this._createLink(x1, y1, x2, y2, matcher, uri, fg));
+  }
 
-    this._mouseZoneManager.add(new MouseZone(
+  private _createLink(x1: number, y1: number, x2: number, y2: number,
+           options: ILinkOptions, uri: string, fg: number): MouseZone {
+    return new MouseZone(
       x1 + 1,
       y1 + 1,
       x2 + 1,
       y2 + 1,
       e => {
-        if (matcher.handler) {
-          return matcher.handler(e, uri);
+        if (options.handler) {
+          return options.handler(e, uri);
         }
         window.open(uri, '_blank');
       },
@@ -291,24 +299,29 @@ export class Linkifier extends EventEmitter implements ILinkifier {
       },
       e => {
         this.emit(LinkHoverEventTypes.TOOLTIP, this._createLinkHoverEvent(x1, y1, x2, y2, fg));
-        if (matcher.hoverTooltipCallback) {
-          matcher.hoverTooltipCallback(e, uri);
+        if (options.tooltipCallback) {
+          options.tooltipCallback(e, uri);
         }
       },
       () => {
         this.emit(LinkHoverEventTypes.LEAVE, this._createLinkHoverEvent(x1, y1, x2, y2, fg));
         this._terminal.element.classList.remove('xterm-cursor-pointer');
-        if (matcher.hoverLeaveCallback) {
-          matcher.hoverLeaveCallback();
+        if (options.leaveCallback) {
+          options.leaveCallback();
         }
       },
       e => {
-        if (matcher.willLinkActivate) {
-          return matcher.willLinkActivate(e, uri);
+        if (options.willLinkActivate) {
+          return options.willLinkActivate(e, uri);
         }
         return true;
       }
-    ));
+    );
+  }
+
+  doAddLink(x1: number, y1: number, x2: number, y2: number,
+           options: ILinkOptions, uri: string, fg: number): void {
+    this._pendingLinks.push(this._createLink(x1, y1, x2, y2, options, uri, fg));
   }
 
   private _createLinkHoverEvent(x1: number, y1: number, x2: number, y2: number, fg: number): ILinkHoverEvent {
