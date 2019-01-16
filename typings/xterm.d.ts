@@ -337,6 +337,8 @@ declare module 'xterm' {
      */
     markers: IMarker[];
 
+    linkHandler?: (event: MouseEvent, uri: string) => void;
+
     /**
      * Natural language strings that can be localized.
      */

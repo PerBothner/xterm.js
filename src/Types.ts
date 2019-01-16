@@ -14,8 +14,7 @@ export type CustomKeyEventHandler = (event: KeyboardEvent) => boolean;
 export type CharData = [number, string, number, number];
 export type LineData = CharData[];
 
-// FIXME rename to LinkHandler
-export type LinkMatcherHandler = (event: MouseEvent, uri: string) => void;
+export type LinkHandler = (event: MouseEvent, uri: string) => void;
 export type LinkMatcherValidationCallback = (uri: string, callback: (isValid: boolean) => void) => void;
 
 export type CharacterJoinerHandler = (text: string) => [number, number][];
@@ -61,6 +60,7 @@ export interface IInputHandlingTerminal extends IEventEmitter {
   urxvtMouse: boolean;
   cursorHidden: boolean;
   linkifier: ILinkifier;
+  linkHandler: LinkHandler;
 
   buffers: IBufferSet;
   buffer: IBuffer;
@@ -185,11 +185,11 @@ export interface IInputHandler {
 }
 
 export interface ILinkOptions {
-  handler?: LinkMatcherHandler;
+  handler?: LinkHandler;
   /**
    * A callback that fires when the mouse hovers over a link.
    */
-  tooltipCallback?: LinkMatcherHandler;
+  tooltipCallback?: LinkHandler;
   /**
    * A callback that fires when the mouse leaves a link that was hovered.
    */
@@ -233,6 +233,7 @@ export interface ITerminal extends PublicTerminal, IElementAccessor, IBufferAcce
   buffer: IBuffer;
   buffers: IBufferSet;
   isFocused: boolean;
+  linkHandler: LinkHandler;
   mouseHelper: IMouseHelper;
   viewport: IViewport;
   bracketedPasteMode: boolean;
@@ -341,7 +342,7 @@ export interface ISelectionManager {
 export interface ILinkifier extends IEventEmitter {
   attachToDom(mouseZoneManager: IMouseZoneManager): void;
   linkifyRows(start: number, end: number): void;
-  registerLinkMatcher(regex: RegExp, handler: LinkMatcherHandler, options?: ILinkMatcherOptions): number;
+  registerLinkMatcher(regex: RegExp, handler: LinkHandler, options?: ILinkMatcherOptions): number;
   deregisterLinkMatcher(matcherId: number): boolean;
   doAddLink(x1: number, y1: number, x2: number, y2: number,
             matcher: ILinkOptions, uri: string, fg: number): void;

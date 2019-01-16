@@ -4,7 +4,7 @@
  */
 
 import { Terminal as ITerminalApi, ITerminalOptions, IMarker, IDisposable, ILinkMatcherOptions, ITheme, ILocalizableStrings } from 'xterm';
-import { ITerminal } from '../Types';
+import { ITerminal, LinkHandler } from '../Types';
 import { Terminal as TerminalCore } from '../Terminal';
 import * as Strings from '../Strings';
 
@@ -20,6 +20,8 @@ export class Terminal implements ITerminalApi {
   public get rows(): number { return this._core.rows; }
   public get cols(): number { return this._core.cols; }
   public get markers(): IMarker[] { return this._core.markers; }
+  public get linkHandler(): LinkHandler { return this._core.linkHandler; }
+  public set linkHandler(handler: LinkHandler) { this._core.linkHandler = handler; }
   public blur(): void {
     this._core.blur();
   }

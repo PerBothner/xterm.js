@@ -4,7 +4,7 @@
  */
 
 import { IMouseZoneManager } from './ui/Types';
-import { ILinkHoverEvent, ILinkMatcher, LinkMatcherHandler, LinkHoverEventTypes, ILinkOptions, ILinkMatcherOptions, ILinkifier, ITerminal, IBufferStringIteratorResult } from './Types';
+import { ILinkHoverEvent, ILinkMatcher, LinkHandler, LinkHoverEventTypes, ILinkOptions, ILinkMatcherOptions, ILinkifier, ITerminal, IBufferStringIteratorResult } from './Types';
 import { MouseZone } from './ui/MouseZoneManager';
 import { EventEmitter } from './common/EventEmitter';
 import { CHAR_DATA_ATTR_INDEX } from './Buffer';
@@ -137,14 +137,14 @@ export class Linkifier extends EventEmitter implements ILinkifier {
    * @param options Options for the link matcher.
    * @return The ID of the new matcher, this can be used to deregister.
    */
-  public registerLinkMatcher(regex: RegExp, handler: LinkMatcherHandler, options: ILinkMatcherOptions = {}): number {
+  public registerLinkMatcher(regex: RegExp, handler: LinkHandler, options: ILinkMatcherOptions = {}): number {
     if (!handler) {
       throw new Error('handler must be defined');
     }
     const matcher: ILinkMatcher = {
       id: this._nextLinkMatcherId++,
       regex,
-      handler: handler || options.handler,
+      handler: handler || options.handler || this._terminal.linkHandler,
       matchIndex: options.matchIndex,
       validationCallback: options.validationCallback,
       tooltipCallback: options.tooltipCallback,

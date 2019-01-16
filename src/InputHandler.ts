@@ -1935,7 +1935,9 @@ export class InputHandler extends Disposable implements IInputHandler {
         const attr: number = char[CHAR_DATA_ATTR_INDEX];
         fg = (attr >> 9) & 0x1ff;
       }
-      const options: ILinkOptions = {};
+      const options: ILinkOptions = {
+        handler: this._terminal.linkHandler
+      };
       this._terminal.linkifier.doAddLink(startX, startY, endX, endY, options, uri, fg);
     }
   }

@@ -21,7 +21,7 @@
  *   http://linux.die.net/man/7/urxvt
  */
 
-import { IInputHandlingTerminal, IViewport, ICompositionHelper, ITerminalOptions, ITerminal, IBrowser, ILinkifier, ILinkMatcherOptions, CustomKeyEventHandler, LinkMatcherHandler, CharData, CharacterJoinerHandler, IBufferLine } from './Types';
+import { IInputHandlingTerminal, IViewport, ICompositionHelper, ITerminalOptions, ITerminal, IBrowser, ILinkifier, ILinkMatcherOptions, CustomKeyEventHandler, LinkHandler, CharData, CharacterJoinerHandler, IBufferLine } from './Types';
 import { IMouseZoneManager } from './ui/Types';
 import { IRenderer } from './renderer/Types';
 import { BufferSet } from './BufferSet';
@@ -196,6 +196,7 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
   public renderer: IRenderer;
   public selectionManager: SelectionManager;
   public linkifier: ILinkifier;
+  public linkHandler: LinkHandler;
   public buffers: BufferSet;
   public viewport: IViewport;
   private _compositionHelper: ICompositionHelper;
@@ -1417,7 +1418,7 @@ export class Terminal extends EventEmitter implements ITerminal, IDisposable, II
    * @param options Options for the link matcher.
    * @return The ID of the new matcher, this can be used to deregister.
    */
-  public registerLinkMatcher(regex: RegExp, handler: LinkMatcherHandler, options?: ILinkMatcherOptions): number {
+  public registerLinkMatcher(regex: RegExp, handler: LinkHandler, options?: ILinkMatcherOptions): number {
     const matcherId = this.linkifier.registerLinkMatcher(regex, handler, options);
     this.refresh(0, this.rows - 1);
     return matcherId;

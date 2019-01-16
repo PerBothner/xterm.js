@@ -4,7 +4,7 @@
  */
 
 import { IColorSet, IRenderer, IRenderDimensions, IColorManager } from '../renderer/Types';
-import { IInputHandlingTerminal, IViewport, ICompositionHelper, ITerminal, IBuffer, IBufferSet, IBrowser, ICharMeasure, ISelectionManager, ITerminalOptions, ILinkifier, IMouseHelper, ILinkMatcherOptions, CharacterJoinerHandler, IBufferLine, IBufferStringIterator } from '../Types';
+import { IInputHandlingTerminal, IViewport, ICompositionHelper, ITerminal, IBuffer, IBufferSet, IBrowser, ICharMeasure, ISelectionManager, ITerminalOptions, ILinkifier, IMouseHelper, ILinkMatcherOptions, LinkHandler, CharacterJoinerHandler, IBufferLine, IBufferStringIterator } from '../Types';
 import { ICircularList, XtermListener } from '../common/Types';
 import { Buffer } from '../Buffer';
 import * as Browser from '../core/Platform';
@@ -103,6 +103,7 @@ export class MockTerminal implements ITerminal {
   mouseHelper: IMouseHelper;
   renderer: IRenderer;
   linkifier: ILinkifier;
+  linkHandler: LinkHandler;
   isFocused: boolean;
   options: ITerminalOptions = {};
   element: HTMLElement;
@@ -199,6 +200,7 @@ export class MockInputHandlingTerminal implements IInputHandlingTerminal {
   urxvtMouse: boolean;
   cursorHidden: boolean;
   linkifier: ILinkifier;
+  linkHandler: LinkHandler;
   buffers: IBufferSet;
   buffer: IBuffer = new MockBuffer();
   viewport: IViewport;
