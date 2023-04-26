@@ -250,7 +250,7 @@ function createTerminal(): void {
   const typedTerm = term as TerminalType;
   addons.search.instance = new SearchAddon();
   addons.serialize.instance = new SerializeAddon();
-  addons.fit.instance = new FitAddon();
+  addons.fit.instance = new FitAddon(false);
   addons.unicode11.instance = new Unicode11Addon();
   try {  // try to start with webgl renderer (might throw on older safari/webkit)
     addons.webgl.instance = new WebglAddon();
