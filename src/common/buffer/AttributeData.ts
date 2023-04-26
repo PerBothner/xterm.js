@@ -47,10 +47,13 @@ export class AttributeData implements IAttributeData {
   public isDim(): number           { return this.bg & BgFlags.DIM; }
   public isStrikethrough(): number { return this.fg & FgFlags.STRIKETHROUGH; }
   public isProtected(): number     { return this.bg & BgFlags.PROTECTED; }
+  public getStyleFlags(): number {  return ((this.fg & 0xFC000000) >> 24) | ((this.bg & 0xFC000000) >> 16); }
 
   // color modes
   public getFgColorMode(): number { return this.fg & Attributes.CM_MASK; }
   public getBgColorMode(): number { return this.bg & Attributes.CM_MASK; }
+  public getFg(): number { return this.fg & Attributes.CM_COLOR_MASK; }
+  public getBg(): number { return this.bg & Attributes.CM_COLOR_MASK; }
   public isFgRGB(): boolean       { return (this.fg & Attributes.CM_MASK) === Attributes.CM_RGB; }
   public isBgRGB(): boolean       { return (this.bg & Attributes.CM_MASK) === Attributes.CM_RGB; }
   public isFgPalette(): boolean   { return (this.fg & Attributes.CM_MASK) === Attributes.CM_P16 || (this.fg & Attributes.CM_MASK) === Attributes.CM_P256; }

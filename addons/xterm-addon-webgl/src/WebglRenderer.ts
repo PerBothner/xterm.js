@@ -388,6 +388,7 @@ export class WebglRenderer extends Disposable implements IRenderer {
         // Process any joined character ranges as needed. Because of how the
         // ranges are produced, we know that they are valid for the characters
         // and attributes of our input.
+        /* FIXME
         if (joinedRanges.length > 0 && x === joinedRanges[0][0]) {
           isJoined = true;
           range = joinedRanges.shift()!;
@@ -403,7 +404,7 @@ export class WebglRenderer extends Disposable implements IRenderer {
           // Skip over the cells occupied by this range in the loop
           lastCharX = range[1] - 1;
         }
-
+        */
         chars = cell.getChars();
         code = cell.getCode();
         i = ((y * terminal.cols) + x) * RENDER_MODEL_INDICIES_PER_CELL;
@@ -526,6 +527,7 @@ export class WebglRenderer extends Disposable implements IRenderer {
   }
 }
 
+/*
 // TODO: Share impl with core
 export class JoinedCellData extends AttributeData implements ICellData {
   private _width: number;
@@ -571,7 +573,7 @@ export class JoinedCellData extends AttributeData implements ICellData {
     return [this.fg, this.getChars(), this.getWidth(), this.getCode()];
   }
 }
-
+*/
 function clamp(value: number, max: number, min: number = 0): number {
   return Math.max(Math.min(value, max), min);
 }

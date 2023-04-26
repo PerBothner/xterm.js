@@ -13,7 +13,6 @@ import { IColorSet, ReadonlyColorSet } from 'browser/Types';
 import { CellData } from 'common/buffer/CellData';
 import { IOptionsService, IBufferService, IDecorationService } from 'common/services/Services';
 import { ICharacterJoinerService, ICoreBrowserService, IThemeService } from 'browser/services/Services';
-import { JoinedCellData } from 'browser/services/CharacterJoinerService';
 import { color, css } from 'common/Color';
 import { Terminal } from 'xterm';
 
@@ -104,6 +103,7 @@ export class TextRenderLayer extends BaseRenderLayer {
         // Process any joined character ranges as needed. Because of how the
         // ranges are produced, we know that they are valid for the characters
         // and attributes of our input.
+        /*
         if (joinedRanges.length > 0 && x === joinedRanges[0][0]) {
           isJoined = true;
           const range = joinedRanges.shift()!;
@@ -119,7 +119,7 @@ export class TextRenderLayer extends BaseRenderLayer {
           // Skip over the cells occupied by this range in the loop
           lastCharX = range[1] - 1;
         }
-
+        */
         // If the character is an overlapping char and the character to the
         // right is a space, take ownership of the cell to the right. We skip
         // this check for joined characters because their rendering likely won't

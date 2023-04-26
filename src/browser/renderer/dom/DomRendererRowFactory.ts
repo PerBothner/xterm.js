@@ -11,7 +11,6 @@ import { ICoreService, IDecorationService, IOptionsService } from 'common/servic
 import { color, rgba } from 'common/Color';
 import { IColorSet, ReadonlyColorSet } from 'browser/Types';
 import { ICharacterJoinerService, ICoreBrowserService, IThemeService } from 'browser/services/Services';
-import { JoinedCellData } from 'browser/services/CharacterJoinerService';
 import { excludeFromContrastRatioDemands } from 'browser/renderer/shared/RendererUtils';
 import { AttributeData } from 'common/buffer/AttributeData';
 
@@ -72,10 +71,12 @@ export class DomRendererRowFactory {
 
     const colors = this._themeService.colors;
     let elemIndex = -1;
+    let cell = this._workCell;
+    lineData.scanInit(cell);
 
     let x = 0;
     for (; x < lineLength; x++) {
-      lineData.loadCell(x, this._workCell);
+      lineData.scanNext(cell, 1, 0);
       let width = this._workCell.getWidth();
 
       // The character to the left is a wide character, drawing is owned by the char at x-1
@@ -92,7 +93,7 @@ export class DomRendererRowFactory {
       // Process any joined character ranges as needed. Because of how the
       // ranges are produced, we know that they are valid for the characters
       // and attributes of our input.
-      let cell = this._workCell;
+      /*
       if (joinedRanges.length > 0 && x === joinedRanges[0][0]) {
         isJoined = true;
         const range = joinedRanges.shift()!;
@@ -111,7 +112,7 @@ export class DomRendererRowFactory {
         // Recalculate width
         width = cell.getWidth();
       }
-
+      */
       const charElement = this._document.createElement('span');
       if (width > 1) {
         charElement.style.width = `${cellWidth * width}px`;

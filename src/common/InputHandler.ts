@@ -510,10 +510,12 @@ export class InputHandler extends Disposable implements IInputHandler {
     let bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y)!;
 
     this._dirtyRowTracker.markDirty(this._activeBuffer.y);
+    const cursor = this._workCell;
+    bufferRow.scanMove(cursor, this._activeBuffer.x);
 
-    // handle wide chars: reset start_cell-1 if we would overwrite the second cell of a wide char
-    if (this._activeBuffer.x && end - start > 0 && bufferRow.getWidth(this._activeBuffer.x - 1) === 2) {
-      bufferRow.setCellFromCodePoint(this._activeBuffer.x - 1, 0, 1, curAttr.fg, curAttr.bg, curAttr.extended);
+      // handle wide chars: reset start_cell-1 if we would overwrite the second cell of a wide char
+    if (this._activeBuffer.x && end - start > 0) {
+      bufferRow.fixSplitWide(cursor);
     }
 
     for (let pos = start; pos < end; ++pos) {
@@ -540,6 +542,7 @@ export class InputHandler extends Disposable implements IInputHandler {
         this._oscLinkService.addLineToLink(this._getCurrentLinkId(), this._activeBuffer.ybase + this._activeBuffer.y);
       }
 
+      /* FIXME replace by proper grapheme cluser support
       // insert combining char at last cursor position
       // this._activeBuffer.x should never be 0 for a combining char
       // since they always follow a cell consuming char
@@ -555,6 +558,7 @@ export class InputHandler extends Disposable implements IInputHandler {
         }
         continue;
       }
+      */
 
       // goto next line if ch would overflow
       // NOTE: To avoid costly width checks here,
@@ -582,6 +586,7 @@ export class InputHandler extends Disposable implements IInputHandler {
           }
           // row changed, get it again
           bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y)!;
+          bufferRow.scanMove(cursor, 0);
         } else {
           this._activeBuffer.x = cols - 1;
           if (chWidth === 2) {
@@ -605,31 +610,17 @@ export class InputHandler extends Disposable implements IInputHandler {
       }
 
       // write current char to buffer and advance cursor
-      bufferRow.setCellFromCodePoint(this._activeBuffer.x++, code, chWidth, curAttr.fg, curAttr.bg, curAttr.extended);
-
-      // fullwidth char - also set next cell to placeholder stub and advance cursor
-      // for graphemes bigger than fullwidth we can simply loop to zero
-      // we already made sure above, that this._activeBuffer.x + chWidth will not overflow right
-      if (chWidth > 0) {
-        while (--chWidth) {
-          // other than a regular empty cell a cell following a wide char has no width
-          bufferRow.setCellFromCodePoint(this._activeBuffer.x++, 0, 0, curAttr.fg, curAttr.bg, curAttr.extended);
-        }
-      }
+      bufferRow.setFromCodePoint(cursor, code, chWidth, curAttr.fg, curAttr.bg, curAttr.extended);
+      this._activeBuffer.x += chWidth;
+      bufferRow.scanNext(cursor, chWidth, 0);
     }
     // store last char in Parser.precedingCodepoint for REP to work correctly
     // This needs to check whether:
     //  - fullwidth + surrogates: reset
     //  - combining: only base char gets carried on (bug in xterm?)
     if (end - start > 0) {
-      bufferRow.loadCell(this._activeBuffer.x - 1, this._workCell);
-      if (this._workCell.getWidth() === 2 || this._workCell.getCode() > 0xFFFF) {
-        this._parser.precedingCodepoint = 0;
-      } else if (this._workCell.isCombined()) {
-        this._parser.precedingCodepoint = this._workCell.getChars().charCodeAt(0);
-      } else {
-        this._parser.precedingCodepoint = this._workCell.content;
-      }
+      const ch = bufferRow.previousCodePoint(cursor);
+      this._parser.precedingCodepoint = ch < 0 || ch > 0xffff ? 0 : ch;
     }
 
     // handle wide chars: reset cell to the right if it is second cell of a wide char
