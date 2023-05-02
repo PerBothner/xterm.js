@@ -17,8 +17,6 @@ let $startIndex = 0;
 /** Factor when to cleanup underlying array buffer after shrinking. */
 const CLEANUP_THRESHOLD = 2;
 
-const NULL_DATA_WORD = 0;
-
 export abstract class AbstractBufferLine implements IBufferLine {
   /** Number of logical columns */
   length: number = 0;
@@ -129,7 +127,7 @@ export abstract class AbstractBufferLine implements IBufferLine {
   public setCellFromCodePoint(index: number, codePoint: number, width: number, fg: number, bg: number, eAttrs: IExtendedAttrs): void {
     const cursor = new CellData();
     this.scanInit(cursor);
-      this.scanNext(cursor, index, 0);
+    this.scanNext(cursor, index, 0);
     this.setFromCodePoint(cursor, codePoint, width, fg, bg, eAttrs);
   }
 
@@ -198,6 +196,8 @@ const enum DataKind { // 4 bits
     //GENERIC_TEXT = 4, // Text has not been checked for wide or clusters MAYBE UNNEEDED
 }
 
+const NULL_DATA_WORD = DataKind.SKIP_COLUMNS << 28;
+
 export class BufferLine extends AbstractBufferLine implements IBufferLine {
   // Each item in _data is a 4-bit DataKind and 28 bits data.
   protected _data: Uint32Array;
@@ -233,6 +233,8 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
   scanInit(cursor: ICellData): void {
     const cell = cursor as CellData;
     cell.bufferLine = this;
+    cell.fg = 0;
+    cell.bg = 0;
     BufferLine.setPosition(cell, 0, 0, 0);
   }
 
@@ -276,10 +278,78 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
           this._data = new_data;
       }
   }
+
   addEmptyDataElements(position: number, count: number): void {
     this.resizeData(this._dataLength + count);
+    this._data.copyWithin(position + count, position, this._dataLength);
     this._dataLength += count;
-    this._data.copyWithin(position, position + count);
+  }
+
+  /** Check invariants. Useful for debugging. */
+  _check(): void {
+    function error(str: string) {
+      console.log("ERROR: "+str);
+    };
+    let itext = 0;
+    let icol = 0;
+    if (this._dataLength < 0 || this._dataLength > this._data.length)
+      error("bad _dataLength");
+    const incrementText = (wlen: number) => {
+      itext += wlen;
+      if (itext > this._text.length)
+         error("text length too big");
+    };
+    for (let idata = 0; idata < this._dataLength; idata++) {
+      const word = this._data[idata];
+      const wlen = BufferLine.wStrLen(word);
+      const kind = BufferLine.wKind(word);
+      switch (kind) {
+        case DataKind.FG:
+        case DataKind.BG:
+          break;
+        case DataKind.STYLE_FLAGS:
+          break;
+        case DataKind.SKIP_COLUMNS:
+          break;
+        case DataKind.CLUSTER_w1:
+        case DataKind.CLUSTER_w2:
+          incrementText(wlen);
+          break;
+        case DataKind.TEXT_w1:
+        case DataKind.TEXT_w2:
+          incrementText(wlen);
+          break;
+        default:
+          error("invalid _dataKind");
+      }
+    }
+    if (itext < this._text.length)
+      error("text length too small");
+  }
+
+  _checkCursor(cell: CellData): void {
+    function error(str: string) {
+      console.log("ERROR: "+str);
+    };
+    let itext = BufferLine.textIndex(cell);
+    let idata = BufferLine.dataIndex(cell);
+    if (! (idata >= 0) || idata > this._dataLength)
+      error("bad data index");
+    if (! (itext >= 0) || itext > this._text.length)
+      error("bad text index");
+    if (idata < this._dataLength) {
+      let word = this._data[idata];
+      let kind = BufferLine.wKind(word);
+      let wwidth = kind === DataKind.CLUSTER_w2 || kind === DataKind.TEXT_w2 ? 2 : 1;
+      const wlen = BufferLine.wStrLen(word);
+      let colOffset = BufferLine.columnOffset(cell);
+      if (BufferLine.wKindIsText(kind) || kind === DataKind.SKIP_COLUMNS) {
+        if (colOffset > wwidth * wlen)
+          error("bad columnOffset");
+      } else {
+        error("cursor points to style word");
+      }
+    }
   }
 
   /**
@@ -303,57 +373,77 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
     let style_flags = (fg_flags >> 24) | (bg_flags >> 16);
     fg -= fg_flags;
     bg -= bg_flags;
-    let add = 0;
-    if (fg !== cell.getFg()) add++;
-    if (bg !== cell.getBg()) add++;
+    const needFg = fg !== cell.getFg();
+    const needBg = bg !== cell.getBg();
     let oldExt = cell.hasExtendedAttrs() && cell.extended;
     let newExt = (style_flags & StyleFlags.HAS_EXTENDED) && eAttrs;
-    if (style_flags !== cell.getStyleFlags() || oldExt !== newExt) add++;
-    let itext = BufferLine.textIndex(cell);
+    const needStyle = style_flags !== cell.getStyleFlags() || oldExt !== newExt;
+    let add = (needBg?1:0) + (needFg?1:0) + (needStyle?1:0);
     let idata = BufferLine.dataIndex(cell);
     let word = idata < this._dataLength ? this._data[idata] : NULL_DATA_WORD;
     let kind = BufferLine.wKind(word);
-    let wwidth = kind === DataKind.CLUSTER_w2 || kind === DataKind.TEXT_w2 ? 2 : 1;
 
-    if (add || width !== wwidth) {
+    if (add || width !== (kind === DataKind.CLUSTER_w2 || kind === DataKind.TEXT_w2 ? 2 : 1)) {
       this.splitWord(cell, add);
-      word = this._data[idata];
+      idata = BufferLine.dataIndex(cell);
+      word = idata < this._dataLength ? this._data[idata] : NULL_DATA_WORD;
+      kind = BufferLine.wKind(word);
     }
-    if (fg !== cell.fg) {
+    if (needFg) {
       this._data[idata++] = BufferLine.wSet1(DataKind.FG, fg);
       cell.fg = fg;
     }
-    if (bg !== cell.bg) {
+    if (needBg) {
       this._data[idata++] = BufferLine.wSet1(DataKind.BG, bg);
       cell.bg = bg;
     }
-    if (style_flags !== cell.getStyleFlags() || oldExt !== newExt) {
+    if (needStyle) {
       if (style_flags & StyleFlags.HAS_EXTENDED)
         this._extendedAttrs[idata] = eAttrs;
       this._data[idata++] = BufferLine.wSet1(DataKind.STYLE_FLAGS, style_flags);
+      cell.setStyleFlags(style_flags);
     }
 
+    let itext = BufferLine.textIndex(cell);
     const wlen = BufferLine.wStrLen(word);
-    const colOffset = BufferLine.columnOffset(cell);
+    let colOffset = BufferLine.columnOffset(cell);
     const appending = width * colOffset >= wlen;
+    codePoint &= Content.HAS_CONTENT_MASK;
+    if (codePoint === 0) {
+      if (kind === DataKind.SKIP_COLUMNS && colOffset < wlen) {
+      } if (idata === this._dataLength) {
+      } if (kind === DataKind.SKIP_COLUMNS && colOffset === wlen) {
+        this.deleteCols(cell, 1, -1/*???*/);
+        this._data[idata] = BufferLine.wSet1(DataKind.SKIP_COLUMNS, wlen + 1);
+      } else {
+        this.deleteCols(cell, width, -1/*???*/);
+        this.addEmptyDataElements(idata, 1);
+        this._data[idata] = BufferLine.wSet1(DataKind.SKIP_COLUMNS, 1);
+        idata++;
+        BufferLine.setPosition(cell, idata, itext, 0);
+      }
+      return;
+    }
     const newGlyph = String.fromCodePoint(codePoint);
     if ((kind === DataKind.TEXT_w1 && width === 1)
         || (kind === DataKind.TEXT_w2 && width === 2)) {
-        const charOffset = width == 2 ? colOffset >> 1 : colOffset;
+        if (appending) {
+          this.deleteCols(cell, width, -1/*???*/);
+          this._data[idata] = BufferLine.wSet1(kind, wlen+1);
+        }
+        const charOffset = itext + (width == 2 ? colOffset >> 1 : colOffset);
         this._text = this._text.substring(0, charOffset)
             + newGlyph
-            + (appending ? ''
-                : this._text.substring(charOffset + 1));
-        this._data[idata] = BufferLine.wSet1(kind, wlen+1);
+            + (appending ? '' : this._text.substring(charOffset + 1));
     } else {
-        this.deleteCols(cell, width, 0/*???*/);
-        this.addEmptyDataElements(idata, 1);
-        kind = width == 2 ? DataKind.TEXT_w2 : DataKind.TEXT_w1;
-        this._data[idata] = BufferLine.wSet1(kind, wlen+1);
-        this._text = this._text.substring(0, itext)
-            + newGlyph
-            + (appending ? ''
-                : this._text.substring(itext));
+      this.deleteCols(cell, width, -1/*???*/);
+      this.addEmptyDataElements(idata, 1);
+      kind = width == 2 ? DataKind.TEXT_w2
+          : DataKind.TEXT_w1;
+      this._data[idata] = BufferLine.wSet1(kind, newGlyph.length);
+      this._text = this._text.substring(0, itext)
+          + newGlyph
+          + (appending ? '' : this._text.substring(itext));
     }
     BufferLine.setPosition(cell, idata, itext, colOffset);
   }
@@ -434,21 +524,22 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
     if (colOffset === 0) {
       if (extraWordsToAdd) {
         this.addEmptyDataElements(idata, add);
-        BufferLine.setPosition(cell, idata+add, itext, colOffset);
+        BufferLine.setPosition(cell, idata, itext, colOffset);
       }
     } else if (colOffset === wlen) {
-      add++;
+      //add++;
       if (extraWordsToAdd) {
-        this.addEmptyDataElements(idata, add);
+        this.addEmptyDataElements(idata + 1, add);
       }
-      BufferLine.setPosition(cell, idata+add, itext, colOffset);
+      BufferLine.setPosition(cell, idata+1, itext + colOffset, 0);
     } else {
       this._data[idata] = BufferLine.wSet1(kind, colOffset);
-      this.addEmptyDataElements(idata + 1, add + 1);
-      idata += add + 1;
-      this._data[idata] = BufferLine.wSet1(kind, wlen - colOffset);
       if (kind !== DataKind.SKIP_COLUMNS)
         itext += colOffset;
+      idata++;
+      this.addEmptyDataElements(idata, add + 1);
+      //idata += add + 1;
+      this._data[idata+add] = BufferLine.wSet1(kind, wlen - colOffset);
       BufferLine.setPosition(cell, idata, itext, 0);
     }
   }
@@ -648,28 +739,34 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
           if (colOffset === 0 && wlen <= todo) {
             dskip_first = dskip_first < 0 ? idata : dskip_first;
             dskip_last = idata;
+            todo -= wlen;
           } else {
-            wlen = Math.min(colOffset + todo,  wlen);
-            this._data[idata] = BufferLine.wSet1(DataKind.SKIP_COLUMNS, wlen);
+            let delta = Math.min(todo,  wlen - colOffset);
+            this._data[idata] = BufferLine.wSet1(DataKind.SKIP_COLUMNS, wlen - delta);
+            todo -= delta;
           }
-          todo -= wlen;
           colOffset = 0;
           break;
         case DataKind.TEXT_w1:
         case DataKind.TEXT_w2:
           w = kind - DataKind.TEXT_w1; // 0, or 1 if wide characters
-          if (colOffset === 0 && wlen << w <= todo) {
+          if (colOffset === 0 && (wlen << w) <= todo) {
             dskip_first = dskip_first < 0 ? idata : dskip_first;
             dskip_last = idata;
             if (tskip_first < 0)
               tskip_first = itext;
+            tskip_last = itext + wlen;
+            todo -= wlen << w;
           } else {
-            wlen = Math.min((colOffset + todo) >> w,  wlen);
+            const tstart = (colOffset >> w);
+            const tend = Math.min((colOffset + todo) >> w,  wlen);
             if (tskip_first < 0)
-              tskip_first = itext + (colOffset >> w);;
-            this._data[idata] = BufferLine.wSet1(kind, wlen);
+              tskip_first = itext + tstart;
+            tskip_last = itext + tend;
+            const delta = tend - tstart;
+            this._data[idata] = BufferLine.wSet1(kind, wlen - delta);
+            todo -= delta << w;
           }
-          todo -= wlen << w;
           colOffset = 0;
           break;
         case DataKind.CLUSTER_w1:
@@ -678,13 +775,15 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
           if (colOffset === 0 && wlen << w <= todo) {
             dskip_first = dskip_first < 0 ? idata : dskip_first;
             dskip_last = idata;
-            if (tskip_first === undefined)
+            if (tskip_first < 0)
               tskip_first = itext;
+            tskip_last = itext + wlen;
           } else {
             // FIXME
             wlen = Math.min((colOffset + todo) >> w,  wlen);
             if (tskip_first < 0)
-              tskip_first = itext + (colOffset >> w);;
+              tskip_first = itext + (colOffset >> w);
+            tskip_last = itext + wlen;
             this._data[idata] = BufferLine.wSet1(kind, wlen);
           }
           todo -= wlen << w;
@@ -692,35 +791,21 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
           break;
       }
     }
-    if (tskip_first) {
+    if (tskip_first >= 0) {
       this._text = this._text.substring(0, tskip_first)
             + this._text.substring(tskip_last);
     }
     if (dskip_first >= 0) {
-        this._data.copyWithin(dskip_first, dskip_last, this._dataLength);
-        this._dataLength -= n;
+        this._data.copyWithin(dskip_first, dskip_last + 1, this._dataLength);
+        this._dataLength -= dskip_last + 1 - dskip_first;
     }
     if (n == -1) {
       // deleted an extra column because we ended up inside a wide char
       // FIXME insert a SKIP_COLUMNS to compensate
     }
     if (bg >= 0) {
+      // FIXME
     }
-    /*
-    if (n < this.length - pos) {
-      const cell = new CellData();
-      for (let i = 0; i < this.length - pos - n; ++i) {
-        this.setCell(pos + i, this.loadCell(pos + n + i, cell));
-      }
-      for (let i = this.length - n; i < this.length; ++i) {
-        this.setCell(i, fillCellData);
-      }
-    } else {
-      for (let i = pos; i < this.length; ++i) {
-        this.setCell(i, fillCellData);
-      }
-    }
-    */
     /*
     // handle fullwidth at pos:
     // - reset pos-1 if wide char
@@ -854,7 +939,7 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
       }
       return;
     }
-    for (let i = 0; i < this.length; ++i) {
+    for (let i = 0; i < this.length; ++i) { // FIXME OPTIMIZE
       this.setCell(i, fillCellData);
     }
   }
@@ -905,8 +990,9 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
   }
 
   public copyCellsFrom(src: BufferLine, srcCol: number, destCol: number, length: number, applyInReverse: boolean): void {
-    alert("copyCellsFrom");
-  /*
+    // This is used by reflow (window resize). FUTURE: Integrate with pretty-printing.
+    console.log("NOT IMPLEMENTED copyCellsFrom");
+    /*
     const srcData = src._data;
     if (applyInReverse) {
       for (let cell = length - 1; cell >= 0; cell--) {

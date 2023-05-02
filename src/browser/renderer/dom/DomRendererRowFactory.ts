@@ -63,6 +63,7 @@ export class DomRendererRowFactory {
     // the viewport).
     let lineLength = 0;
     for (let x = Math.min(lineData.length, cols) - 1; x >= 0; x--) {
+      // FIXME optimize
       if (lineData.loadCell(x, this._workCell).getCode() !== NULL_CELL_CODE || (isCursorRow && x === cursorX)) {
         lineLength = x + 1;
         break;

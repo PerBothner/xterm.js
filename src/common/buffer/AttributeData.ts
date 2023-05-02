@@ -48,6 +48,10 @@ export class AttributeData implements IAttributeData {
   public isStrikethrough(): number { return this.fg & FgFlags.STRIKETHROUGH; }
   public isProtected(): number     { return this.bg & BgFlags.PROTECTED; }
   public getStyleFlags(): number {  return ((this.fg & 0xFC000000) >> 24) | ((this.bg & 0xFC000000) >> 16); }
+  public setStyleFlags(flags: number): void {
+    this.fg = (this.fg & 0x03ffffff) | ((flags << 24) & 0xFC000000);
+    this.bg = (this.bg & 0x03ffffff) | ((flags << 16) & 0xFC000000);
+  }
 
   // color modes
   public getFgColorMode(): number { return this.fg & Attributes.CM_MASK; }
