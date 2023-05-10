@@ -30,7 +30,7 @@ export abstract class AbstractBufferLine implements IBufferLine {
   abstract insertCells(pos: number, n: number, fillCellData: ICellData, eraseAttr?: IAttributeData): void;
   abstract replaceCells(start: number, end: number, fillCellData: ICellData, eraseAttr: IAttributeData, respectProtect: boolean): void;
   abstract addCodepointToCell(index: number, codePoint: number): void;
-    abstract previousCodePoint(cell: ICellData): number;
+  abstract previousCodePoint(cell: ICellData): number;
   abstract resize(cols: number, fillCellData: ICellData): boolean;
   abstract fill(fillCellData: ICellData, respectProtect: boolean): void;
   abstract copyFrom(line: BufferLine): void;
@@ -138,7 +138,18 @@ export abstract class AbstractBufferLine implements IBufferLine {
       this.setCellFromCodePoint(index, cell.content, cell.getWidth(), cell.fg, cell.bg, cell.extended);
   }
 
-  abstract setFromCodePoint(cursor: ICellData, codePoint: number, width: number, fg: number, bg: number, eAttrs: IExtendedAttrs): void;
+  /**
+   * Set cell data from input handler.
+   * Since the input handler see the incoming chars as UTF32 codepoints,
+   * it gets an optimized access method.
+   */
+  public setFromCodePoint(cursor: ICellData, codePoint: number, width: number, fg: number, bg: number, eAttrs: IExtendedAttrs): void {
+    this.setAttributes(cursor, fg, bg, eAttrs);
+    this.setCodePoint(cursor, codePoint, width);
+  }
+
+  abstract setAttributes(cursor: ICellData, fg: number, bg: number, eAttrs: IExtendedAttrs): void;
+  abstract setCodePoint(cursor: ICellData, codePoint: number, width: number): void;
 
   /**
    * Get codepoint of the cell. @deprecated
@@ -360,12 +371,7 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
     return this.loadCell(index, new CellData()).getAsCharData();
   }
 
-  /**
-   * Set cell data from input handler.
-   * Since the input handler see the incoming chars as UTF32 codepoints,
-   * it gets an optimized access method.
-   */
-  public setFromCodePoint(cursor: ICellData, codePoint: number, width: number, fg: number, bg: number, eAttrs: IExtendedAttrs): void {
+  public setAttributes(cursor: ICellData, fg: number, bg: number, eAttrs: IExtendedAttrs): void {
     const cell = cursor as CellData;
     this.fixSplitWide(cell);
     let fg_flags = fg & 0xFC000000;
@@ -380,31 +386,36 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
     const needStyle = style_flags !== cell.getStyleFlags() || oldExt !== newExt;
     let add = (needBg?1:0) + (needFg?1:0) + (needStyle?1:0);
     let idata = BufferLine.dataIndex(cell);
-    let word = idata < this._dataLength ? this._data[idata] : NULL_DATA_WORD;
-    let kind = BufferLine.wKind(word);
 
-    if (add || width !== (kind === DataKind.CLUSTER_w2 || kind === DataKind.TEXT_w2 ? 2 : 1)) {
+    if (add) {
       this.splitWord(cell, add);
       idata = BufferLine.dataIndex(cell);
-      word = idata < this._dataLength ? this._data[idata] : NULL_DATA_WORD;
-      kind = BufferLine.wKind(word);
+      if (needFg) {
+        this._data[idata++] = BufferLine.wSet1(DataKind.FG, fg);
+        cell.fg = fg;
+      }
+      if (needBg) {
+        this._data[idata++] = BufferLine.wSet1(DataKind.BG, bg);
+        cell.bg = bg;
+      }
+      if (needStyle) {
+        if (style_flags & StyleFlags.HAS_EXTENDED)
+          this._extendedAttrs[idata] = eAttrs;
+        this._data[idata++] = BufferLine.wSet1(DataKind.STYLE_FLAGS, style_flags);
+        cell.setStyleFlags(style_flags);
+      }
+      let itext = BufferLine.textIndex(cell);
+      BufferLine.setPosition(cell, idata, itext, 0);
     }
-    if (needFg) {
-      this._data[idata++] = BufferLine.wSet1(DataKind.FG, fg);
-      cell.fg = fg;
-    }
-    if (needBg) {
-      this._data[idata++] = BufferLine.wSet1(DataKind.BG, bg);
-      cell.bg = bg;
-    }
-    if (needStyle) {
-      if (style_flags & StyleFlags.HAS_EXTENDED)
-        this._extendedAttrs[idata] = eAttrs;
-      this._data[idata++] = BufferLine.wSet1(DataKind.STYLE_FLAGS, style_flags);
-      cell.setStyleFlags(style_flags);
-    }
+  }
 
+  public setCodePoint(cursor: ICellData, codePoint: number, width: number): void {
+    const cell = cursor as CellData;
+
+    let idata = BufferLine.dataIndex(cell);
     let itext = BufferLine.textIndex(cell);
+    let word = idata < this._dataLength ? this._data[idata] : NULL_DATA_WORD;
+    let kind = BufferLine.wKind(word);
     const wlen = BufferLine.wStrLen(word);
     let colOffset = BufferLine.columnOffset(cell);
     const appending = width * colOffset >= wlen;
@@ -424,7 +435,8 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
       }
       return;
     }
-    const newGlyph = String.fromCodePoint(codePoint);
+      //const newGlyph = String.fromCodePoint(codePoint);
+    const newGlyph = stringFromCodePoint(codePoint);
     if ((kind === DataKind.TEXT_w1 && width === 1)
         || (kind === DataKind.TEXT_w2 && width === 2)) {
         if (appending) {
@@ -676,7 +688,7 @@ export class BufferLine extends AbstractBufferLine implements IBufferLine {
       return -1;
     const word = this._data[idata];
     const kind = BufferLine.wKind(word);
-      const width = (kind === DataKind.CLUSTER_w2 || kind === DataKind.TEXT_w2) ? 2 : 1;
+    const width = (kind === DataKind.CLUSTER_w2 || kind === DataKind.TEXT_w2) ? 2 : 1;
     const wlen = BufferLine.wStrLen(word);
     switch (kind) {
       case DataKind.CLUSTER_w1:

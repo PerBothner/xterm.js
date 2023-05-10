@@ -83,4 +83,13 @@ export class UnicodeService implements IUnicodeService {
     }
     return result;
   }
+
+  getUnicodeProperties(codePoint: number): number {
+    return this._activeProvider.getUnicodeProperties(codePoint);
+    //return getInfo(codePoint);
+  }
+  propertiesToWidth(charInfo: number): number {
+    return this._activeProvider.propertiesToWidth(charInfo);
+    //return infoToWidth(charInfo);
+  }
 }

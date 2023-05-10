@@ -12,6 +12,12 @@ class DummyProvider implements IUnicodeVersionProvider {
   public wcwidth(n: number): 0 | 1 | 2 {
     return 2;
   }
+  getUnicodeProperties(codePoint: number): number {
+    return 0;
+  }
+  propertiesToWidth(charInfo: number): 0 | 1 | 2 {
+    return 2;
+  }
 }
 
 describe('unicode provider', () => {

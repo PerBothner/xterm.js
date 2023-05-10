@@ -518,12 +518,14 @@ export class InputHandler extends Disposable implements IInputHandler {
       bufferRow.fixSplitWide(cursor);
     }
 
+    bufferRow.setAttributes(cursor, curAttr.fg, curAttr.bg, curAttr.extended);
+
+      // FIXME be smarter - avoid getUnicodeProperties, perhaps through caching
+    let previousChar = bufferRow.previousCodePoint(cursor);
+    let previousInfo = previousChar <= 0 ? -1 : this._unicodeService.getUnicodeProperties(previousChar);
+
     for (let pos = start; pos < end; ++pos) {
       code = data[pos];
-
-      // calculate print space
-      // expensive call, therefore we save width in line buffer
-      chWidth = this._unicodeService.wcwidth(code);
 
       // get charset replacement character
       // charset is only defined for ASCII, therefore we only
@@ -535,6 +537,26 @@ export class InputHandler extends Disposable implements IInputHandler {
         }
       }
 
+      let ucInfo = this._unicodeService.getUnicodeProperties(code);
+      // calculate print space
+      let chWidth = this._unicodeService.propertiesToWidth(ucInfo);
+      if (chWidth >= 2) {
+        const preferWide = false; //this.ambiguousCharsAreWide(context);
+        // Treat emoji_presentation_selector as WIDE.
+        chWidth = chWidth == 3 || preferWide || code === 0xfe0f ? 2 : 0;
+      }
+      /*
+      let shouldJoin = this._unicodeService.couldJoin(ucInfo);
+      if (shouldJoin) {
+          if (previousInfo === -1) {
+            let previousCodepoint = -1;  // FIXME
+            if (previousCodepoint >= 0)
+              previousInfo = this._unicodeService.getUnicodeProperties(previousCodepoint);
+          }
+          shouldJoin = previousInfo === -1 ? false
+              : this._unicodeService.shouldJoin(previousInfo, ucInfo) > 0;
+      }
+      */
       if (screenReaderMode) {
         this._onA11yChar.fire(stringFromCodePoint(code));
       }
@@ -610,7 +632,7 @@ export class InputHandler extends Disposable implements IInputHandler {
       }
 
       // write current char to buffer and advance cursor
-      bufferRow.setFromCodePoint(cursor, code, chWidth, curAttr.fg, curAttr.bg, curAttr.extended);
+      bufferRow.setCodePoint(cursor, code, chWidth);
       this._activeBuffer.x += chWidth;
       bufferRow.scanNext(cursor, chWidth, 0);
     }

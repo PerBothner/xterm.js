@@ -1144,6 +1144,8 @@ declare module 'xterm-headless' {
      * Unicode version dependent wcwidth implementation.
      */
     wcwidth(codepoint: number): 0 | 1 | 2;
+    getUnicodeProperties(codepoint: number): number;
+    propertiesToWidth(charInfo: number): 0 | 1 | 2;
   }
 
   /**

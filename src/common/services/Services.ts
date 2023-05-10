@@ -310,12 +310,16 @@ export interface IUnicodeService {
    * Unicode version dependent
    */
   wcwidth(codepoint: number): number;
+  getUnicodeProperties(codepoint: number): number;
   getStringCellWidth(s: string): number;
+  propertiesToWidth(charInfo: number): number;
 }
 
 export interface IUnicodeVersionProvider {
   readonly version: string;
   wcwidth(ucs: number): 0 | 1 | 2;
+  getUnicodeProperties(codepoint: number): number;
+  propertiesToWidth(charInfo: number): 0 | 1 | 2;
 }
 
 export const IDecorationService = createDecorator<IDecorationService>('DecorationService');

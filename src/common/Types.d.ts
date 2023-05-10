@@ -252,6 +252,8 @@ export interface IBufferLine {
   setCell(index: number, cell: ICellData): void;
   setCellFromCodePoint(index: number, codePoint: number, width: number, fg: number, bg: number, eAttrs: IExtendedAttrs): void;
   setFromCodePoint(cursor: ICellData, codePoint: number, width: number, fg: number, bg: number, eAttrs: IExtendedAttrs): void;
+  setAttributes(cursor: ICellData, fg: number, bg: number, eAttrs: IExtendedAttrs): void;
+  setCodePoint(cursor: ICellData, codePoint: number, width: number): void;
   addCodepointToCell(index: number, codePoint: number): void;
   insertCells(pos: number, n: number, ch: ICellData, eraseAttr?: IAttributeData): void;
   deleteCells(pos: number, n: number, fill: ICellData, eraseAttr?: IAttributeData): void;

@@ -168,6 +168,9 @@ export class MockUnicodeService implements IUnicodeService {
   public activeVersion: string = '';
   public onChange: IEvent<string> = new EventEmitter<string>().event;
   public wcwidth = (codepoint: number): number => this._provider.wcwidth(codepoint);
+  public getUnicodeProperties(codepoint: number): number {
+      return this.wcwidth(codepoint) << 16; }
+  public propertiesToWidth(charInfo: number): number { return charInfo >> 16; }
   public getStringCellWidth(s: string): number {
     throw new Error('Method not implemented.');
   }

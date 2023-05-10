@@ -210,6 +210,13 @@ export class UnicodeV11 implements IUnicodeVersionProvider {
     }
   }
 
+  public getUnicodeProperties(codePoint: number): number {
+    return this.wcwidth(codePoint) << 16;
+  }
+  public propertiesToWidth(charInfo: number): CharWidth {
+      return (charInfo >> 16) as CharWidth;
+  }
+
   public wcwidth(num: number): CharWidth {
     if (num < 32) return 0;
     if (num < 127) return 1;

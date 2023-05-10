@@ -34,7 +34,7 @@ export class DomRendererRowFactory {
 
   constructor(
     private readonly _document: Document,
-    @ICharacterJoinerService private readonly _characterJoinerService: ICharacterJoinerService,
+    @ICharacterJoinerService private readonly _characterJoinerService: ICharacterJoinerService, // FIXME remove
     @IOptionsService private readonly _optionsService: IOptionsService,
     @ICoreBrowserService private readonly _coreBrowserService: ICoreBrowserService,
     @ICoreService private readonly _coreService: ICoreService,
@@ -55,7 +55,6 @@ export class DomRendererRowFactory {
 
     const fragment = this._document.createDocumentFragment();
 
-    const joinedRanges = this._characterJoinerService.getJoinedCharacters(row);
     // Find the line length first, this prevents the need to output a bunch of
     // empty cells at the end. This cannot easily be integrated into the main
     // loop below because of the colCount feature (which can be removed after we
