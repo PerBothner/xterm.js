@@ -426,15 +426,6 @@ export class CoreBrowserTerminal extends CoreTerminal implements ITerminal {
     this._viewportElement.classList.add('xterm-viewport');
     fragment.appendChild(this._viewportElement);
 
-    let normalHtmlArea = this._document.createElement('div');
-    normalHtmlArea.classList.add('xterm-scroll-area', 'xterm-active-buffer');
-    let altHtmlArea = this._document.createElement('div');
-    altHtmlArea.classList.add('xterm-scroll-area');
-    this._viewportElement.appendChild(normalHtmlArea);
-    this._viewportElement.appendChild(altHtmlArea);
-    this.buffers.normal.scrollArea = normalHtmlArea;
-    this.buffers.alt.scrollArea = altHtmlArea;
-
     this.screenElement = this._document.createElement('div');
     this.screenElement.classList.add('xterm-screen');
     this._register(addDisposableListener(this.screenElement, 'mousemove', (ev: MouseEvent) => this.updateCursorStyle(ev)));
@@ -506,11 +497,6 @@ export class CoreBrowserTerminal extends CoreTerminal implements ITerminal {
     if (!this._renderService.hasRenderer()) {
       this._renderService.setRenderer(this._createRenderer());
     }
-
-    this.viewport = this._instantiationService.createInstance(Viewport, this._viewportElement /*, this._viewportScrollArea*/);
-    this.viewport.onRequestScrollLines(e => this.scrollLines(e.amount, e.suppressScrollEvent, ScrollSource.VIEWPORT)),
-    this.register(this._inputHandler.onRequestSyncScrollBar(() => this.viewport!.syncScrollArea()));
-    this.register(this.viewport);
 
     this._register(this.onCursorMove(() => {
       this._renderService!.handleCursorMove();
@@ -831,8 +817,9 @@ export class CoreBrowserTerminal extends CoreTerminal implements ITerminal {
   }
 
   public insertHtml(htmlText: string): void {
-     console.log("insertHtml");
-     this.buffers.active.insertHtml(htmlText);
+    console.log("insertHtml");
+    let element = this._inputHandler.insertHtml(htmlText);
+    this._viewportElement?.append(element);
   }
 
   /**

@@ -277,7 +277,7 @@ export class MockBuffer implements IBuffer {
   public setWrapped(row: number, value: boolean): void {
     throw new Error('Method not implemented.');
   }
-  public insertHtml(html: string): void {
+  public insertHtml(html: string): HTMLElement {
     throw new Error('Method not implemented.');
   }
 }

@@ -60,7 +60,7 @@ export interface IBuffer {
   clearAllMarkers(): void;
   setWrapped(row: number, value: boolean): void;
   reflowRegion(startRow: number, endRow: number, maxRows: number): void;
-  insertHtml(htmlText: string): void;
+  insertHtml(htmlText: string): HTMLElement;
 }
 
 export interface IBufferSet extends IDisposable {

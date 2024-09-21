@@ -29,6 +29,10 @@ export class Buffer implements IBuffer {
   public lines: CircularList<IBufferLine>;
   /** Row index of first BufferLine that is partially or fully in the viewport. */
   public ydisp: number = 0;
+  /** How many pixel lines are scrolled out of sight in line ydisp. */
+  public ydispClipTop: number = 0;
+  // Number of rows between ydisp and prior html element
+  public textChunkDisp: number = 0;
   public ybase: number = 0;
   public y: number = 0;
   public x: number = 0;
@@ -40,7 +44,7 @@ export class Buffer implements IBuffer {
   public savedCurAttrData = DEFAULT_ATTR_DATA.clone();
   public savedCharset: ICharset | undefined = DEFAULT_CHARSET;
   public scrollArea: HTMLElement | undefined;
-  // first row following the most recent htl chunk (if any)
+  // first row following the most recent html chunk (if any)
   textChunkY: number = 0;
 
   /** Reflow may be needed for line indexes less than lastReflowNeeded.
@@ -902,11 +906,9 @@ export class Buffer implements IBuffer {
     }
   }
 
-  public insertHtml(htmlText: string): void {
+  public insertHtml(htmlText: string): HTMLElement {
     const div = document.createElement('div');
     div.innerHTML = htmlText;
-    const element = this.scrollArea!;
-    element.appendChild(div);
     const line = new ElementBufferLine(div);
     const row = this.y + this.ybase;
     line.precedingTextCount = row - this.textChunkY;
@@ -914,6 +916,7 @@ export class Buffer implements IBuffer {
     this.y += 1;
     this.lines.splice(row, 0, line);
     line.height = div.offsetHeight;
+    return div;
   }
 
   // for DEBUGGING

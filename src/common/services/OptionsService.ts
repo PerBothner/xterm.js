@@ -35,6 +35,7 @@ export const DEFAULT_OPTIONS: Readonly<Required<ITerminalOptions>> = {
   newBufferLine: true,
   scrollback: 1000,
   scrollOnUserInput: true,
+  scrollPartialLines: false,
   scrollSensitivity: 1,
   screenReaderMode: false,
   smoothScrollDuration: 0,

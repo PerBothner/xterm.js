@@ -112,14 +112,6 @@
     top: 0;
 }
 
-.xterm .xterm-scroll-area {
-    display: none;
-}
-
-.xterm .xterm-scroll-area.xterm-active-buffer {
-    display: block;
-}
-
 .xterm-char-measure-element {
     display: inline-block;
     visibility: hidden;

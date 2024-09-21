@@ -244,6 +244,7 @@ export interface ITerminalOptions {
   screenReaderMode?: boolean;
   scrollback?: number;
   scrollOnUserInput?: boolean;
+  scrollPartialLines?: boolean;
   scrollSensitivity?: number;
   smoothScrollDuration?: number;
   tabStopWidth?: number;

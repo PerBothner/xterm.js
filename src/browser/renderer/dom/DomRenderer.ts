@@ -28,7 +28,7 @@ let nextTerminalId = 1;
 
 /**
  * The standard renderer and fallback for when the webgl addon is slow. This is not meant to be
- * particularly fast and will even lack some features such as custom glyphs, hoever this is more
+ * particularly fast and will even lack some features such as custom glyphs, however this is more
  * reliable as webgl may not work on some machines.
  */
 export class DomRenderer extends Disposable implements IRenderer {
@@ -42,6 +42,7 @@ export class DomRenderer extends Disposable implements IRenderer {
   private _selectionContainer: HTMLElement;
   private _widthCache: WidthCache;
   private _selectionRenderModel: ISelectionRenderModel = createSelectionRenderModel();
+  private _firstVisibleElement: number = Infinity;
 
   public dimensions: IRenderDimensions;
 
@@ -297,7 +298,7 @@ export class DomRenderer extends Disposable implements IRenderer {
   }
 
   private _refreshRowElements(cols: number, rows: number): void {
-    // FIXME might need rows+2 row elements if partially scrolled
+    // if (scrollPartialLines) rows += 2;
     // Add missing elements
     for (let i = this._rowElements.length; i <= rows; i++) {
       const row = this._document.createElement('div');
@@ -442,43 +443,57 @@ export class DomRenderer extends Disposable implements IRenderer {
     const cursorStyle = this._optionsService.rawOptions.cursorStyle;
     const cursorInactiveStyle = this._optionsService.rawOptions.cursorInactiveStyle;
 
-    let priorElementLine: ElementBufferLine | undefined;
-    let rowy = start + buffer.ydisp;
-    for (let y = start; y <= end; y++) {
-      const row = y + buffer.ydisp;
-      const rowElement = this._rowElements[rowy];
+    for (let row = this._firstVisibleElement; row < buffer.ydisp; row++) {
       const lineData = buffer.lines.get(row);
-      if (!rowElement || !lineData) {
+      if (lineData instanceof ElementBufferLine) {
+        lineData.element.style.display = 'none';
+        this._firstVisibleElement = buffer.ydisp;
+      }
+    }
+    let previousElementHeight: number = 0;
+    let previousElementBottom: number = 0;
+    //start = 0; // FIXME
+    let rrow: number = 0;
+    for (let y = 0; y <= end; y++) {
+      const row = y + buffer.ydisp;
+      const lineData = buffer.lines.get(row);
+      if (!lineData) {
         break;
       }
-
       if (lineData instanceof ElementBufferLine) {
-        priorElementLine = lineData;
-        lineData.element.style.marginTop = `${lineData.precedingTextCount * this.dimensions.css.cell.height}px`;
-      } else {
-        if (priorElementLine) {
-          rowElement.style.marginTop = `${priorElementLine.height}px`;
-          priorElementLine = undefined;
-        } else {
-          rowElement.style.marginTop = '';
+        let element = lineData.element;
+        element.style.top = `${previousElementBottom}px`;
+        element.style.position = 'absolute';
+        element.style.zIndex = "1";
+        element.style.display = ``;
+        previousElementHeight = element.offsetHeight;
+        previousElementBottom += previousElementHeight;
+        if (this._firstVisibleElement > row) {
+          this._firstVisibleElement = row;
         }
-
-        rowElement.replaceChildren(
-          ...this._rowFactory.createRow(
-            lineData,
-            row,
-            row === cursorAbsoluteY,
-            cursorStyle,
-            cursorInactiveStyle,
-            cursorX,
-            cursorBlink,
-            this.dimensions.css.cell.width,
-            this._widthCache,
-            -1,
-            -1
-          )
-        );
-        rowy++;
+      } else {
+        let rowElement ;
+        if (y >= start && (rowElement = this._rowElements[rrow])) {
+          rowElement.replaceChildren(
+            ...this._rowFactory.createRow(
+              lineData,
+              row,
+              row === cursorAbsoluteY,
+              cursorStyle,
+              cursorInactiveStyle,
+              cursorX,
+              cursorBlink,
+              this.dimensions.css.cell.width,
+              this._widthCache,
+              -1,
+              -1
+            )
+          );
+          rowElement.style.marginTop = `${previousElementHeight}px`;
+        }
+        rrow++;
+        previousElementHeight = 0;
+        previousElementBottom += this.dimensions.css.cell.height;
       }
     }
   }

@@ -711,6 +711,12 @@ export class InputHandler extends Disposable implements IInputHandler {
     this._dirtyRowTracker.markDirty(this._activeBuffer.y);
   }
 
+  public insertHtml(htmlText: string): HTMLElement {
+    let element = this._activeBuffer.insertHtml(htmlText);
+    this._dirtyRowTracker.markRangeDirty(this._activeBuffer.y, Infinity);
+    return element;
+  }
+
   /**
    * Forward registerCsiHandler from parser.
    */

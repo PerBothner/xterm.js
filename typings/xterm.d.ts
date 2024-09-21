@@ -256,6 +256,12 @@ declare module '@xterm/xterm' {
      */
     scrollOnUserInput?: boolean;
 
+    /** Whether to allow the top of the buffer to be a partial (clipped) line.
+     * May also show a partial line at the end of the buffer.
+     * This should be set if allowInsertHtml is true.
+     */
+    scrollPartialLines?: boolean;
+
     /**
      * The scrolling speed multiplier used for adjusting normal scrolling speed.
      */

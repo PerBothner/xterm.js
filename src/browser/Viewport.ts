@@ -30,7 +30,7 @@ export class Viewport extends Disposable {
 
   constructor(
     element: HTMLElement,
-    screenElement: HTMLElement, // ??
+    screenElement: HTMLElement,
     @IBufferService private readonly _bufferService: IBufferService,
     @ICoreBrowserService coreBrowserService: ICoreBrowserService,
     @ICoreMouseService coreMouseService: ICoreMouseService,
@@ -156,7 +156,7 @@ export class Viewport extends Disposable {
     });
     this._suppressOnScrollHandler = false;
 
-    // If ydisp has been changed by some other copmonent (input/buffer), then stop animating smooth
+    // If ydisp has been changed by some other component (input/buffer), then stop animating smooth
     // scroll and scroll there immediately.
     if (ydisp !== this._latestYDisp) {
       this._scrollableElement.setScrollPosition({
