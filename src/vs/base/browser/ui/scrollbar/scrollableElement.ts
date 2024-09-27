@@ -305,6 +305,9 @@ export abstract class AbstractScrollableElement extends Widget {
 		this._scrollable.setScrollDimensions(dimensions, false);
 	}
 
+	public abstract setScrollPosition(update: INewScrollPosition & { reuseAnimation?: boolean }): void;
+	public abstract getScrollPosition(): IScrollPosition;
+
 	/**
 	 * Update the class name of the scrollable element.
 	 */

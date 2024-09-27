@@ -67,6 +67,7 @@ export class DomRenderer extends Disposable implements IRenderer {
     this._rowContainer = this._document.createElement('div');
     this._rowContainer.classList.add(ROW_CONTAINER_CLASS);
     this._rowContainer.style.lineHeight = 'normal';
+    this._rowContainer.style.position = 'absolute';
     this._rowContainer.setAttribute('aria-hidden', 'true');
     this._refreshRowElements(this._bufferService.cols, this._bufferService.rows);
     this._selectionContainer = this._document.createElement('div');

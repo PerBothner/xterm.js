@@ -713,6 +713,8 @@ export class InputHandler extends Disposable implements IInputHandler {
 
   public insertHtml(htmlText: string): HTMLElement {
     let element = this._activeBuffer.insertHtml(htmlText);
+    this._activeBuffer.x = 0;
+    this.lineFeed();
     this._dirtyRowTracker.markRangeDirty(this._activeBuffer.y, Infinity);
     return element;
   }

@@ -13,6 +13,7 @@ import { SmoothScrollableElement } from 'vs/base/browser/ui/scrollbar/scrollable
 import type { ScrollableElementChangeOptions } from 'vs/base/browser/ui/scrollbar/scrollableElementOptions';
 import { Emitter, Event } from 'vs/base/common/event';
 import { Scrollable, ScrollbarVisibility, type ScrollEvent } from 'vs/base/common/scrollable';
+import { ElementBufferLine } from 'common/buffer/BufferLine';
 
 export class Viewport extends Disposable {
 
@@ -150,9 +151,21 @@ export class Viewport extends Disposable {
     // Ignore any onScroll event that happens as a result of dimensions changing as this should
     // never cause a scrollLines call, only setScrollPosition can do that.
     this._suppressOnScrollHandler = true;
+    const buffer = this._bufferService.buffer;
+    const blines = buffer.lines.length;
+    let linesCount = blines - buffer.elementsCount;
+    for (let y = buffer.firstUnmeasuredElementRow; y < blines; y++) {
+      const line = buffer.lines.get(y);
+      if (line instanceof ElementBufferLine && line.height < 0) {
+        const height = line.element.offsetHeight;
+        line.height = height;
+        buffer.elementsHeight += height;
+      }
+
+    }
     this._scrollableElement.setScrollDimensions({
       height: this._renderService.dimensions.css.canvas.height,
-      scrollHeight: this._renderService.dimensions.css.cell.height * this._bufferService.buffer.lines.length
+      scrollHeight: this._renderService.dimensions.css.cell.height * linesCount + buffer.elementsHeight
     });
     this._suppressOnScrollHandler = false;
 

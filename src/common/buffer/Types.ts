@@ -47,6 +47,9 @@ export interface IBuffer {
   isCursorInViewport: boolean;
   markers: IMarker[];
   scrollArea: HTMLElement | undefined;
+  elementsCount: number;
+  elementsHeight: number;
+  firstUnmeasuredElementRow: number;
   translateBufferLineToString(lineIndex: number, trimRight: boolean, startCol?: number, endCol?: number): string;
   splitLine(row: number, col: number): void;
   getWrappedRangeForLine(y: number): { first: number, last: number };

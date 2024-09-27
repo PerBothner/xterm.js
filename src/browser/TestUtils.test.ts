@@ -241,6 +241,9 @@ export class MockBuffer implements IBuffer {
   public savedCharset: ICharset | undefined;
   public savedCurAttrData = new AttributeData();
   public scrollArea: HTMLElement | undefined;
+  elementsCount: number = 0;
+  elementsHeight: number = 0;
+  firstUnmeasuredElementRow: number = Infinity;
   public translateBufferLineToString(lineIndex: number, trimRight: boolean, startCol?: number, endCol?: number): string {
     return Buffer.prototype.translateBufferLineToString.apply(this, arguments as any);
   }

@@ -46,6 +46,10 @@ export class Buffer implements IBuffer {
   public scrollArea: HTMLElement | undefined;
   // first row following the most recent html chunk (if any)
   textChunkY: number = 0;
+  /** Sum of non-negative height fields for all ElementBufferLine in this. */
+  elementsHeight: number = 0;
+  elementsCount: number = 0;
+  firstUnmeasuredElementRow: number = Infinity;
 
   /** Reflow may be needed for line indexes less than lastReflowNeeded.
    * I.e. if i >= lastReflowNeeded then lines.get(i).reflowNeeded is false.
@@ -915,7 +919,9 @@ export class Buffer implements IBuffer {
     this.textChunkY = row + 1;
     this.y += 1;
     this.lines.splice(row, 0, line);
-    line.height = div.offsetHeight;
+    //line.height = div.offsetHeight;
+    this.firstUnmeasuredElementRow = Math.min(row, this.firstUnmeasuredElementRow);
+    this.elementsCount++;
     return div;
   }
 
