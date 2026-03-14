@@ -224,7 +224,7 @@ export interface ICellData extends IAttributeData {
  */
 export interface IBufferLine {
   length: number;
-  isWrapped: boolean;
+  get isWrapped(): boolean;
   get(index: number): CharData;
   set(index: number, value: CharData): void;
   loadCell(index: number, cell: ICellData): ICellData;
@@ -238,7 +238,6 @@ export interface IBufferLine {
   cleanupMemory(): number;
   fill(fillCellData: ICellData, respectProtect?: boolean): void;
   copyFrom(line: IBufferLine): void;
-  clone(): IBufferLine;
   getTrimmedLength(): number;
   getNoBgTrimmedLength(): number;
   translateToString(trimRight?: boolean, startCol?: number, endCol?: number, outColumns?: number[]): string;
