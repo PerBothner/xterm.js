@@ -81,7 +81,7 @@ export class BufferService extends Disposable implements IBufferService {
 
     const topRow = buffer.ybase + buffer.scrollTop;
     const bottomRow = buffer.ybase + buffer.scrollBottom;
-    let oldLine = buffer.lines.get(bottomRow) as BufferLine;
+    const oldLine = buffer.lines.get(bottomRow) as BufferLine;
     let lline: LogicalLine;
     if (isWrapped) {
       lline = oldLine.logicalLine;
@@ -89,7 +89,7 @@ export class BufferService extends Disposable implements IBufferService {
       lline = new LogicalLine(0);
     }
     const newLine = new BufferLine(this.cols, lline);
-    if (oldLine) {
+    if (isWrapped && oldLine) {
       oldLine.nextBufferLine = newLine;
       newLine.startColumn = lline.length;
     }

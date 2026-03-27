@@ -148,27 +148,6 @@ export class LogicalLine {
     }
   }
 
-  trimLength(): void {
-    let index = this.length;
-    while (index > 0) {
-      index--;
-      const content = this._data[index * CELL_SIZE + Cell.CONTENT];
-      if (content & Content.HAS_CONTENT_MASK) {
-        index++;
-        break;
-      }
-      //this.length = index;
-    }
-    if (index < this.length) {
-      this.length = index;
-      for (let line = this.firstBufferLine; line; line = line.nextBufferLine) {
-        if (line.startColumn > index)
-          line.startColumn = index;
-      }
-      // FIXME - possible optimization - trim _data _combinedData _extendedAttrs
-    }
-  }
-
   /**
    * Set cell data from input handler.
    * Since the input handler see the incoming chars as UTF32 codepoints,
@@ -181,17 +160,6 @@ export class LogicalLine {
         this.length = index; // this.length - 1;
         this.trimLength();
       }
-      /*
-      while (index > 0) {
-        index--;
-        const content = this._data[index * CELL_SIZE + Cell.CONTENT];
-        if (content & Content.HAS_CONTENT_MASK) {
-          break;
-        }
-        this.length = index;
-      }
-      */
-      // FIXME need to deal with backgroundColor.
       return;
     }
     if (index >= this.length) {
@@ -212,6 +180,27 @@ export class LogicalLine {
     this._data[index * CELL_SIZE + Cell.BG] = attrs.bg;
   }
 
+
+  trimLength(): void {
+    let index = this.length;
+    while (index > 0) {
+      index--;
+      const content = this._data[index * CELL_SIZE + Cell.CONTENT];
+      if (content & Content.HAS_CONTENT_MASK) {
+        index++;
+        break;
+      }
+      //this.length = index;
+    }
+    if (index < this.length) {
+      this.length = index;
+      for (let line = this.firstBufferLine; line; line = line.nextBufferLine) {
+        if (line.startColumn > index)
+          line.startColumn = index;
+      }
+      // FIXME - possible optimization - trim _data _combinedData _extendedAttrs
+    }
+  }
 
   public copyCellsFrom(src: LogicalLine, srcCol: number, dstCol: number, length: number, applyInReverse: boolean): void {
     let cell = applyInReverse ? length - 1 : 0;
@@ -466,7 +455,12 @@ export class BufferLine implements IBufferLine {
    * Set data at `index` to `cell`.
    */
   public setCell(index: number, cell: ICellData): void {
-    this.logicalLine.setCell(index + this.startColumn, cell);
+    // this.logicalLine.setCell(index + this.startColumn, cell);
+    const content = cell.content & (Content.CODEPOINT_MASK|Content.IS_COMBINED_MASK);
+    this.setCellFromCodepoint(index, content, cell.getWidth(), cell);
+    if (cell.content & Content.IS_COMBINED_MASK) {
+      this.logicalLine._combined[index + this.startColumn] = cell.combinedData;
+    }
   }
 
   /**
@@ -685,12 +679,9 @@ export class BufferLine implements IBufferLine {
       lline._combined = {};
       lline._extendedAttrs = {};
     }
-    if ((this as any).xyz) console.log('fill len:'+this.length+" content:"+fillCellData.content.toString(16))
-    if ((this as any).xyz) (this.logicalLine as any).xyz = 1;
     for (let i = 0; i < this.length; ++i) {
       this.setCell(i, fillCellData);
     }
-    if ((this as any).xyz) (this.logicalLine as any).xyz = 0;
   }
 
   /** alter to a full copy of line
@@ -705,15 +696,14 @@ export class BufferLine implements IBufferLine {
     const logicalLine = this.logicalLine;
     const startColumn = this.startColumn;
     const data = logicalLine._data;
-    let i = this.validEnd;
-    for (; --i >= startColumn; ) {
+    for (let i = this.validEnd; --i >= startColumn; ) {
       if ((data[i * CELL_SIZE + Cell.CONTENT] & Content.HAS_CONTENT_MASK)
       || (noBg && (data[i * CELL_SIZE + Cell.BG] & Attributes.CM_MASK))) {
         i += data[i * CELL_SIZE + Cell.CONTENT] >> Content.WIDTH_SHIFT;
-        break;
+        return i - startColumn;
       }
     }
-    return i - startColumn;
+    return startColumn;
   }
 
   public getNoBgTrimmedLength(): number {
@@ -724,11 +714,8 @@ export class BufferLine implements IBufferLine {
   }
 
   public copyCellsFrom(src: BufferLine, srcCol: number, destCol: number, length: number, applyInReverse: boolean): void {
-    if ((this as any).xyz) console.log("copyCellsFrom sC:"+srcCol+" dCol:"+destCol+" s.stC:"+src.startColumn+" d.stC:"+this.startColumn+" len:"+length+" t.ll.len:"+this.logicalLine.length);
-    if ((this as any).xyz) (this.logicalLine as any).xyz = 1;
     this.logicalLine.copyCellsFrom(src.logicalLine, srcCol + src.startColumn,
       destCol + this.startColumn, length, applyInReverse);
-      if ((this as any).xyz) (this.logicalLine as any).xyz = 0;
   }
 
   /**
