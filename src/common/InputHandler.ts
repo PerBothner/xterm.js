@@ -596,8 +596,8 @@ export class InputHandler extends Disposable implements IInputHandler {
         // autowrap - DECAWM
         // automatically wraps to the beginning of the next line
         if (wraparoundMode) {
-          const oldRow = bufferRow;
-          let oldCol = this._activeBuffer.x - oldWidth;
+          const oldRow = bufferRow as BufferLine;
+          const oldCol = this._activeBuffer.x - oldWidth;
           this._activeBuffer.x = oldWidth;
           this._activeBuffer.y++;
           if (this._activeBuffer.y === this._activeBuffer.scrollBottom + 1) {
@@ -623,9 +623,7 @@ export class InputHandler extends Disposable implements IInputHandler {
               oldCol, 0, oldWidth, false);
           }
           // clear left over cells to the right
-          while (oldCol < cols) {
-            oldRow.setCellFromCodepoint(oldCol++, 0, 1, curAttr);
-          }
+          oldRow.eraseRight(oldCol);
         } else {
           this._activeBuffer.x = cols - 1;
           if (chWidth === 2) {

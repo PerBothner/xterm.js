@@ -766,6 +766,30 @@ export class BufferLine implements IBufferLine {
     }
   }
 
+  public eraseRight(index: BufferColumn): void {
+    const lineStart = this.startColumn;
+    const lineEnd = lineStart + index;
+    const lline = this.logicalLine;
+    if (this.nextBufferLine) {
+      const oldEnd = this.nextBufferLine.startColumn;
+      const count = oldEnd - lineEnd;
+      if (count > 0) {
+        let next: BufferLine | undefined = this;
+        for (;;) {
+          next = next.nextBufferLine;
+          if (! next) break;
+          next.startColumn -= count;
+        }
+        lline.copyCellsFrom(lline, oldEnd, lineEnd, lline.length - oldEnd, false);
+        lline.length -= count;
+      }
+    } else {
+      if (lineEnd < lline.length) {
+        lline.length = lineEnd;
+      }
+    }
+  }
+
   public setWrapped(previousLine: BufferLine): BufferLine {
     const column = previousLine.startColumn + previousLine.length;
     const logicalLine = previousLine.logicalLine;
@@ -777,11 +801,9 @@ export class BufferLine implements IBufferLine {
       newData[i * CELL_SIZE + Cell.FG] = 0;
       newData[i * CELL_SIZE + Cell.BG] = logicalLine.backgroundColor;
     }
-    //this.logicalLine = logicalLine;
-    const oldData = oldLogical._data;
-    // FIXME maybe share code with copyCellsFrom ?
     logicalLine.copyCellsFrom(oldLogical, 0, column, oldLogical.length, false);
     /*
+    const oldData = oldLogical._data;
     for (let i = 0; i < oldLogical.length; i++) {
       const oldIndex = i * CELL_SIZE;
       const newIndex = (column + i) * CELL_SIZE

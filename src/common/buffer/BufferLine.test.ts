@@ -263,11 +263,10 @@ describe('BufferLine', function(): void {
     line.setCell(2, createCellData(3, 'c', 1));
     line.setCell(3, createCellData(4, 'd', 1));
     line.setCell(4, createCellData(5, 'e', 1));
-    const line2 = new TestBufferLine(5, createCellData(1, 'a', 1), true);
+    const line2 = new TestBufferLine(5, createCellData(1, 'a', 1));
     line2.copyFrom(line);
     assert.deepEqual(line2.toArray(), line.toArray());
     assert.equal(line2.length, line.length);
-    assert.equal(line2.isWrapped, line.isWrapped);
   });
   it('should support combining chars', function(): void {
     // CHAR_DATA_CODE_INDEX resembles current behavior in InputHandler.print

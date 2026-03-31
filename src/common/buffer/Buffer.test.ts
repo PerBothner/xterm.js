@@ -83,8 +83,8 @@ describe('Buffer', () => {
       });
       it('should return a range for a middle row wrapping both ways', () => {
         buffer.fillViewportRows();
+        buffer.setWrapped(11, true);
         buffer.setWrapped(12, true);
-        buffer.setWrapped(13, true);
         buffer.setWrapped(13, true);
         buffer.setWrapped(14, true);
         assert.deepEqual(buffer.getWrappedRangeForLine(12), { first: 10, last: 14 });
