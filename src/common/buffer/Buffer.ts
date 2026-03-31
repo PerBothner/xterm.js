@@ -139,14 +139,12 @@ export class Buffer implements IBuffer {
     }
   }
 
-  /**G
+  /**
    * Fills the buffer's viewport with blank lines.
    */
   public fillViewportRows(fillAttr?: IAttributeData): void {
     if (this.lines.length === 0) {
-      if (fillAttr === undefined) {
-        fillAttr = DEFAULT_ATTR_DATA;
-      }
+      fillAttr ??= DEFAULT_ATTR_DATA;
       let i = this._rows;
       while (i--) {
         this.lines.push(this.getBlankLine(fillAttr));
@@ -154,9 +152,8 @@ export class Buffer implements IBuffer {
     }
   }
 
-
   /**
-   * Clears the buffer to it's initial state, discarding all previous data.
+   * Clears the buffer to its initial state, discarding all previous data.
    */
   public clear(): void {
     this.ydisp = 0;

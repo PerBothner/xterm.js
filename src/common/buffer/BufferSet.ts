@@ -50,8 +50,6 @@ export class BufferSet extends Disposable implements IBufferSet {
     });
 
     this.setupTabStops();
-    const msg = this._normal.check() || this._alt.check();
-    if (msg) console.trace('BufferSet reset error: '+msg);
   }
 
   /**

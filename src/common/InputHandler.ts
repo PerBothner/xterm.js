@@ -1199,10 +1199,7 @@ export class InputHandler extends Disposable implements IInputHandler {
       respectProtect
     );
     if (clearWrap) {
-      const prevLine = this._activeBuffer.lines.get(this._activeBuffer.ybase + y - 1);
-      if (prevLine instanceof BufferLine && prevLine.nextBufferLine === line) {
-        (line as BufferLine).asUnwrapped(prevLine);
-      }
+      this._activeBuffer.setWrapped(this._activeBuffer.ybase + y, false);
     }
   }
 
@@ -1213,13 +1210,10 @@ export class InputHandler extends Disposable implements IInputHandler {
    */
   private _resetBufferLine(y: number, respectProtect: boolean = false): void {
     const line = this._activeBuffer.lines.get(this._activeBuffer.ybase + y);
-    if (line instanceof BufferLine) {
+    if (line ) {
       line.fill(this._activeBuffer.getNullCell(this._eraseAttrData()), respectProtect);
       this._bufferService.buffer.clearMarkers(this._activeBuffer.ybase + y);
-      const prevLine = this._activeBuffer.lines.get(this._activeBuffer.ybase + y - 1);
-      if (prevLine instanceof BufferLine && prevLine.nextBufferLine === line) {
-        line.asUnwrapped(prevLine);
-      }
+      this._activeBuffer.setWrapped(this._activeBuffer.ybase + y, false);
     }
   }
 
@@ -3499,11 +3493,8 @@ export class InputHandler extends Disposable implements IInputHandler {
     this._setCursor(0, 0);
     for (let yOffset = 0; yOffset < this._bufferService.rows; ++yOffset) {
       const row = this._activeBuffer.ybase + this._activeBuffer.y + yOffset;
-      this._activeBuffer.setWrapped(row, false)
-      const line = this._activeBuffer.lines.get(row);
-      if (line) {
-        line.fill(cell);
-      }
+      this._activeBuffer.setWrapped(row, false);
+      this._activeBuffer.lines.get(row)?.fill(cell);
     }
     this._dirtyRowTracker.markAllDirty();
     this._setCursor(0, 0);
