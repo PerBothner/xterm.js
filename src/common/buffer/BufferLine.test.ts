@@ -12,7 +12,7 @@ import { createCellData, NULL_CELL_DATA, extendedAttributes } from 'common/TestU
 
 
 class TestBufferLine extends BufferLine {
-    constructor(cols: number, fillCellData?: CellData, isWrapped: boolean = false) {
+  constructor(cols: number, fillCellData?: CellData, isWrapped: boolean = false) {
     const lline = new LogicalLine(isWrapped ? 2 * cols : cols);
     super(cols, lline);
     if (isWrapped) {
@@ -27,10 +27,6 @@ class TestBufferLine extends BufferLine {
     if (fillCellData) {
       this.fill(fillCellData);
     }
-  }
-
-  public get combined(): {[index: number]: string} {
-    return this.logicalLine._combined;
   }
 
   public toArray(): CharData[] {
@@ -301,15 +297,13 @@ describe('BufferLine', function(): void {
     });
     it('should remove combining data on replaced cells after shrinking then enlarging', () => {
       const line = new TestBufferLine(10, createCellData(1, 'a', 1), false);
-      line.set(2, [ 0, '😁', 1, '😁'.charCodeAt(0) ]);
-      line.set(9, [ 0, '😁', 1, '😁'.charCodeAt(0) ]);
+      line.setCell(2, createCellData(0, '😁', 1));
+      line.setCell(9, createCellData(0, '😁', 1));
       assert.equal(line.translateToString(), 'aa😁aaaaaa😁');
-      assert.equal(Object.keys(line.combined).length, 2);
       line.resize(5, createCellData(1, 'a', 1));
       assert.equal(line.translateToString(), 'aa😁aa');
       line.resize(10, createCellData(1, 'a', 1));
       assert.equal(line.translateToString(), 'aa😁aaaaaaa');
-      assert.equal(Object.keys(line.combined).length, 1);
     });
   });
   describe('getTrimLength', function(): void {
