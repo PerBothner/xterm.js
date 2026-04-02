@@ -172,9 +172,6 @@ export class Buffer implements IBuffer {
    * @param newRows The new number of rows.
    */
   public resize(newCols: number, newRows: number): void {
-    // store reference to null cell with default attrs
-    const nullCell = this.getNullCell(DEFAULT_ATTR_DATA);
-
     // Increase max length if needed before adjustments to allow space to fill
     // as required.
     const newMaxLength = this._getCorrectBufferLength(newRows);
@@ -212,10 +209,8 @@ export class Buffer implements IBuffer {
     const reflowNow = this._isReflowEnabled && this._cols !== newCols && ! lazyReflow;
     this._cols = newCols;
     this._rows = newRows;
-    if((this as any).xyz) console.log('before reflowRegion');
     this.reflowRegion(reflowNow ? 0 : this.ydisp, this.lines.length,
       reflowNow? -1 : newRows);
-    if((this as any).xyz) console.log('after reflowRegion');
     // Reduce max length if needed after adjustments, this is done after as it
     // would otherwise cut data from the bottom of the buffer.
     if (newMaxLength < this.lines.maxLength) {
@@ -265,8 +260,6 @@ export class Buffer implements IBuffer {
     let deltaSoFar = 0;
     // Record buffer insert/delete events
     const insertEvents: IInsertEvent[] = [];
-    let oldRows: (IBufferLine|undefined)[] = [];
-    for (let j = 0; j < this.lines.length; j++) { oldRows.push(this.lines.get(j));}
     for (let row = startRow; row < endRow;) {
       if (maxRows >= 0 && newRows.length > maxRows) {
         endRow = row;
@@ -275,11 +268,10 @@ export class Buffer implements IBuffer {
       const line = this.lines.get(row) as BufferLine;
       newRows.push(line);
       const logical = line.logicalLine;
-
       if (logical.firstBufferLine === line && logical.reflowNeeded) {
         let curLine: BufferLine = line;
-
-        let logicalX, logicalSavedX = this.savedX;
+        let logicalX;
+        let logicalSavedX = this.savedX;
         let oldWrapCount = 0; // number of following wrapped lines
         let nextLine = curLine;
         for (; ; oldWrapCount++) {
@@ -344,7 +336,7 @@ export class Buffer implements IBuffer {
           ySaved = startRow + i - 1 + deltaSoFar;
           this.savedX = logicalSavedX - newRows[i-1].startColumn;
         }
-        if (newWrapCount != oldWrapCount) {
+        if (newWrapCount !== oldWrapCount) {
           // Create insert events for later
           insertEvents.push({
             index: lineRow + deltaSoFar + 1,
