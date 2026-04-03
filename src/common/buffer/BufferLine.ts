@@ -6,7 +6,7 @@
 import { CharData, IAttributeData, IBufferLine, ICellData, IExtendedAttrs } from 'common/Types';
 import { AttributeData } from 'common/buffer/AttributeData';
 import { CellData } from 'common/buffer/CellData';
-import { Attributes, BgFlags, CHAR_DATA_ATTR_INDEX, CHAR_DATA_CHAR_INDEX, CHAR_DATA_WIDTH_INDEX, Content, NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR } from 'common/buffer/Constants';
+import { Attributes, BgFlags, Content, NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR } from 'common/buffer/Constants';
 import { stringFromCodePoint } from 'common/input/TextDecoder';
 
 /**
@@ -62,17 +62,17 @@ export class LogicalLine {
   /**
    * @internal
    */
-  _data: Uint32Array;
+  public _data: Uint32Array;
 
   /**
    * @internal
    */
-  _combined: {[index: LogicalColumn]: string} = {};
+  public _combined: {[index: LogicalColumn]: string} = {};
 
   /**
    * @internal
    */
-  _extendedAttrs: {[index: LogicalColumn]: IExtendedAttrs | undefined} = {};
+  public _extendedAttrs: {[index: LogicalColumn]: IExtendedAttrs | undefined} = {};
 
   public reflowNeeded: boolean = false;
   public firstBufferLine: BufferLine | undefined;
@@ -104,11 +104,13 @@ export class LogicalLine {
 
   public getWidth(index: LogicalColumn): number {
     return index >= this.length ? NULL_CELL_WIDTH
-    : this._data[index * CELL_SIZE + Cell.CONTENT] >> Content.WIDTH_SHIFT;
+      : this._data[index * CELL_SIZE + Cell.CONTENT] >> Content.WIDTH_SHIFT;
   }
 
-  /** usually same as argument, but adjust if wide or at end. */
-  charStart(column: LogicalColumn): number {
+  /** usually same as argument, but adjust if wide or at end.
+   * @internal
+   */
+  public charStart(column: LogicalColumn): number {
     return column > this.length ? this.length
       : column > 0 && this.getWidth(column - 1) > 1 ? column - 1
         : column;
@@ -190,13 +192,13 @@ export class LogicalLine {
         index++;
         break;
       }
-      //this.length = index;
     }
     if (index < this.length) {
       this.length = index;
       for (let line = this.firstBufferLine; line; line = line.nextBufferLine) {
-        if (line.startColumn > index)
+        if (line.startColumn > index) {
           line.startColumn = index;
+        }
       }
       // FIXME - possible optimization - trim _data _combinedData _extendedAttrs
     }
@@ -211,7 +213,7 @@ export class LogicalLine {
     }
   }
 
-/**
+  /**
    * Translates the buffer line to a string.
    *
    * @param startCol The column to start the string (0-based inclusive).
@@ -369,8 +371,9 @@ export class BufferLine implements IBufferLine {
    */
   public hasContent(index: number): number {
     index += this.startColumn;
-    if (index >= this.validEnd)
+    if (index >= this.validEnd) {
       return 0;
+    }
     const lline = this.logicalLine;
     return lline._data[index * CELL_SIZE + Cell.CONTENT] & Content.HAS_CONTENT_MASK;
   }

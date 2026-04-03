@@ -10,7 +10,6 @@ import { IBuffer, IBufferSet } from 'common/buffer/Types';
 import { IBufferService, ILogService, IOptionsService, type IBufferResizeEvent } from 'common/services/Services';
 import { Emitter } from 'common/Event';
 import { BufferLine, LogicalLine } from 'common/buffer/BufferLine';
-//import { constants } from 'fs/promises';
 
 export const MINIMUM_COLS = 2; // Less than 2 can mess with wide chars
 export const MINIMUM_ROWS = 1;

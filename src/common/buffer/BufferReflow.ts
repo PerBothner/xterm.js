@@ -5,7 +5,7 @@
 
 import { BufferLine } from 'common/buffer/BufferLine';
 import { CircularList } from 'common/CircularList';
-import { IBufferLine, ICellData } from 'common/Types';
+import { IBufferLine } from 'common/Types';
 
 export interface INewLayoutResult {
   layout: number[];

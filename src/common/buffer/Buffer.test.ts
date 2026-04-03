@@ -101,7 +101,7 @@ describe('Buffer', () => {
       });
       it('should return a range for a row that wraps downward to last row', () => {
         buffer.fillViewportRows();
-        buffer.setWrapped(buffer.lines.length - 1, true);;
+        buffer.setWrapped(buffer.lines.length - 1, true);
         assert.deepEqual(buffer.getWrappedRangeForLine(buffer.lines.length - 2), { first: 22, last: 23 });
       });
     });
