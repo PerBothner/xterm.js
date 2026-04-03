@@ -753,7 +753,7 @@ export class BufferLine implements IBufferLine {
     return result;
   }
 
-  public getPreviousRow(): BufferLine | undefined {
+  public getPreviousLine(): BufferLine | undefined {
     for (let row = this.logicalLine.firstBufferLine; ;) {
       if (! row) {
         return undefined;
@@ -823,6 +823,7 @@ export class BufferLine implements IBufferLine {
     */
 
     logicalLine.length = column + oldLogical.length;
+    if ((globalThis as any).xyz) console.log('- llen='+column+'+'+oldLogical.length);
     logicalLine.backgroundColor = oldLogical.backgroundColor;
     previousLine.nextBufferLine = this;
     for (let line: BufferLine | undefined = this; line; line = line.nextBufferLine) {
@@ -840,7 +841,6 @@ export class BufferLine implements IBufferLine {
     const cell = new CellData();
     this.loadCell(oldStartColumn, cell);
     const newLength = oldLine.length - oldStartColumn;
-    if (newLength < 0) console.log("bad asUnwrapped old.l:"+oldLine.length+" oldStart+"+oldStartColumn);
     const newLogical = new LogicalLine(newLength);
     newLogical.copyCellsFrom(oldLine, oldStartColumn, 0, newLength, false);
     newLogical.firstBufferLine = this;
@@ -849,9 +849,7 @@ export class BufferLine implements IBufferLine {
       nextRow.logicalLine = newLogical;
     }
     oldLine.length = oldStartColumn;
-    if ((this as any).xyz) { (oldLine as any).xyz = 1; console.log('asUnwrapped before trim:'+this.logicalLine.length+' oldSt:'+oldStartColumn); }
     oldLine.trimLength();
-    if ((this as any).xyz) { (oldLine as any).xyz = 1; console.log('after trim:'+oldLine.length); }
     // FIXME truncate/resize
     newLogical.backgroundColor = oldLine.backgroundColor;
     return newLogical;
