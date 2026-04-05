@@ -771,7 +771,7 @@ export class InputHandler extends Disposable implements IInputHandler {
       // reprint is common, especially on resize. Note that the windowsMode wrapped line heuristics
       // can mess with this so windowsMode should be disabled, which is recommended on Windows build
       // 21376 and above.
-      this._activeBuffer.setWrapped, (this._activeBuffer.ybase + this._activeBuffer.y, false);
+      this._activeBuffer.setWrapped(this._activeBuffer.ybase + this._activeBuffer.y, false);
     }
     // If the end of the line is hit, prevent this action from wrapping around to the next line.
     if (this._activeBuffer.x >= this._bufferService.cols) {

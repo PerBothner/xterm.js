@@ -42,12 +42,6 @@ export class Buffer implements IBuffer {
   public savedGlevel: number = 0;
   public savedOriginMode: boolean = false;
   public savedWraparoundMode: boolean = true;
-
-  /** Reflow may be needed for line indexes less than lastReflowNeeded.
-   * I.e. if i >= lastReflowNeeded then lines.get(i).reflowNeeded is false.
-   * Lines later in the buffer are more likely to be visible and hence
-   * have been updated. */
-  public lastReflowNeeded: number = 0;
   public markers: Marker[] = [];
   private _nullCell: ICellData = CellData.fromCharData([0, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE]);
   private _whitespaceCell: ICellData = CellData.fromCharData([0, WHITESPACE_CELL_CHAR, WHITESPACE_CELL_WIDTH, WHITESPACE_CELL_CODE]);
@@ -102,11 +96,14 @@ export class Buffer implements IBuffer {
     return this._whitespaceCell;
   }
 
+  /**
+   * Get an empty unwrapped line.
+   * @param attr Only used for the background color.
+   */
   public getBlankLine(attr: IAttributeData): IBufferLine {
     const lline = new LogicalLine(this._cols);
-    const result = new BufferLine(this._cols, lline);
-    result.fill(this.getNullCell(attr));
-    return result;
+    lline.backgroundColor = attr.bg & ~0xFC000000;
+    return new BufferLine(this._cols, lline);
   }
 
   public get hasScrollback(): boolean {
@@ -692,34 +689,5 @@ export class Buffer implements IBuffer {
     if (!this._isClearing) {
       this.markers.splice(this.markers.indexOf(marker), 1);
     }
-  }
-
-  /** Run some consistency checks on buffer.
-   * Return '' if OK; otherwise error message.
-   * Maybe move to TestUtils?
-   */
-  public check(): string {
-    let prevLine: BufferLine|undefined;
-    const nlines = this.lines.length;
-    for (let i = 0; i < nlines; i++) {
-      const line = this.lines.get(i);
-      if (! (line instanceof BufferLine))
-      { return `line ${i} is not a BufferLine`; }
-      if (prevLine && prevLine.nextBufferLine) {
-        if (prevLine.nextBufferLine !== line)
-        { return `previous line ${i - 1} has next which is not line ${i}`; }
-        if (line.startColumn <= prevLine.startColumn) {
-          return `start column ${line.startColumn} of wrapped line ${i} is not greater than that of previous line`;
-        }
-        if (line.logicalLine !== prevLine.logicalLine) {
-          return `wrapped line ${i} has different logicalLine than previous line`;
-        }
-      } else if (line.logicalLine.firstBufferLine !== line)
-      { return `logicalLine.firstBufferLine of non-wrapped line ${i} is not this line`; }
-      if (i === nlines - 1 && line.nextBufferLine)
-      { return `last line ${i} has continuation line`; }
-      prevLine = line;
-    }
-    return '';
   }
 }

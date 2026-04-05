@@ -14,7 +14,6 @@ import { BufferLine, LogicalLine } from 'common/buffer/BufferLine';
 export const MINIMUM_COLS = 2; // Less than 2 can mess with wide chars
 export const MINIMUM_ROWS = 1;
 
-
 export class BufferService extends Disposable implements IBufferService {
   public serviceBrand: any;
 
