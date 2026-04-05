@@ -4,7 +4,6 @@
  */
 
 import { CircularList, IInsertEvent } from 'common/CircularList';
-import { IdleTaskQueue } from 'common/TaskQueue';
 import { IAttributeData, IBufferLine, ICellData, ICharset } from 'common/Types';
 import { ExtendedAttrs } from 'common/buffer/AttributeData';
 import { BufferLine, LogicalLine, DEFAULT_ATTR_DATA } from 'common/buffer/BufferLine';
@@ -55,8 +54,6 @@ export class Buffer implements IBuffer {
   private _cols: number;
   private _rows: number;
   private _isClearing: boolean = false;
-  private _memoryCleanupQueue: InstanceType<typeof IdleTaskQueue>;
-  private _memoryCleanupPosition = 0;
 
   constructor(
     private _hasScrollback: boolean,
@@ -70,7 +67,7 @@ export class Buffer implements IBuffer {
     this.scrollTop = 0;
     this.scrollBottom = this._rows - 1;
     this.setupTabStops();
-    this._memoryCleanupQueue = new IdleTaskQueue(this._logService);
+
     this.lines.onTrim(amount => {
       const first = this.lines.length && this.lines.get(0);
       if (first instanceof BufferLine && first.isWrapped) {
@@ -301,35 +298,6 @@ export class Buffer implements IBuffer {
       const maxY = Math.max(0, this.lines.length - this.ybase - 1);
       this.y = Math.min(this.y, maxY);
     }
-
-    this._memoryCleanupQueue.clear();
-    // schedule memory cleanup only, if more than 10% of the lines are affected
-    if (dirtyMemoryLines > 0.1 * this.lines.length) {
-      this._memoryCleanupPosition = 0;
-      this._memoryCleanupQueue.enqueue(() => this._batchedMemoryCleanup());
-    }
-  }
-
-  private _batchedMemoryCleanup(): boolean {
-    let normalRun = true;
-    if (this._memoryCleanupPosition >= this.lines.length) {
-      // cleanup made it once through all lines, thus rescan in loop below to also catch shifted
-      // lines, which should finish rather quick if there are no more cleanups pending
-      this._memoryCleanupPosition = 0;
-      normalRun = false;
-    }
-    let counted = 0;
-    while (this._memoryCleanupPosition < this.lines.length) {
-      counted += this.lines.get(this._memoryCleanupPosition++)!.cleanupMemory();
-      // cleanup max 100 lines per batch
-      if (counted > 100) {
-        return true;
-      }
-    }
-    // normal runs always need another rescan afterwards
-    // if we made it here with normalRun=false, we are in a final run
-    // and can end the cleanup task for sure
-    return normalRun;
   }
 
   private get _isReflowEnabled(): boolean {

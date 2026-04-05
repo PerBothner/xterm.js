@@ -182,6 +182,38 @@ export class LogicalLine {
     this._data[index * CELL_SIZE + Cell.BG] = attrs.bg;
   }
 
+  /**
+   * Cleanup underlying array buffer.
+   * A cleanup will be triggered if the array buffer exceeds the actual used
+   * memory by a factor of CLEANUP_THRESHOLD.
+   * Returns 0 or 1 indicating whether a cleanup happened.
+   */
+  public cleanupMemory(threshold: number = 1.3): number {
+    const cols = this.length;
+    if (cols * CELL_SIZE * 4 * threshold < this._data.buffer.byteLength) {
+      const data = new Uint32Array(CELL_SIZE * cols);
+      data.set(this._data);
+      this._data = data;
+      // Remove any cut off combined data
+      const keys = Object.keys(this._combined);
+      for (let i = 0; i < keys.length; i++) {
+        const key = parseInt(keys[i], 10);
+        if (key >= cols) {
+          delete this._combined[key];
+        }
+      }
+      // remove any cut off extended attributes
+      const extKeys = Object.keys(this._extendedAttrs);
+      for (let i = 0; i < extKeys.length; i++) {
+        const key = parseInt(extKeys[i], 10);
+        if (key >= cols) {
+          delete this._extendedAttrs[key];
+        }
+      }
+      return 1;
+    }
+    return 0;
+  }
 
   trimLength(): void {
     let index = this.length;
@@ -655,15 +687,7 @@ export class BufferLine implements IBufferLine {
    * Returns 0 or 1 indicating whether a cleanup happened.
    */
   public cleanupMemory(): number {
-    /* FIXME
-    if (this._data.length * 4 * CLEANUP_THRESHOLD < this._data.buffer.byteLength) {
-      const data = new Uint32Array(this._data.length);
-      data.set(this._data);
-      this._data = data;
-      return 1;
-    }
-    */
-    return 0;
+    return this.logicalLine.cleanupMemory(CLEANUP_THRESHOLD);
   }
 
   /** fill a line with fillCharData */
