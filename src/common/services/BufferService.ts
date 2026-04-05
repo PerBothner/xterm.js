@@ -68,16 +68,6 @@ export class BufferService extends Disposable implements IBufferService {
    */
   public scroll(eraseAttr: IAttributeData, isWrapped: boolean = false): void {
     const buffer = this.buffer;
-    /*
-    let newLine: IBufferLine | undefined;
-    newLine = this._cachedBlankLine;
-    if (!newLine || newLine.length !== this.cols || newLine.getFg(0) !== eraseAttr.fg || newLine.getBg(0) !== eraseAttr.bg) {
-      newLine = buffer.getBlankLine(eraseAttr, isWrapped);
-      this._cachedBlankLine = newLine;
-    }
-    newLine.isWrapped = isWrapped;
-    */
-
     const topRow = buffer.ybase + buffer.scrollTop;
     const bottomRow = buffer.ybase + buffer.scrollBottom;
     const oldLine = buffer.lines.get(bottomRow) as BufferLine;
@@ -94,23 +84,13 @@ export class BufferService extends Disposable implements IBufferService {
     }
     lline.backgroundColor = eraseAttr.bg;
 
-    /*
-    if (isWrapped) {
-      oldLine.nextBufferLine = newLine;
-    }
-    */
-
     if (buffer.scrollTop === 0) {
       // Determine whether the buffer is going to be trimmed after insertion.
       const willBufferBeTrimmed = buffer.lines.isFull;
 
       // Insert the line using the fastest method
       if (bottomRow === buffer.lines.length - 1) {
-        /* if (willBufferBeTrimmed) {
-          buffer.lines.recycle().copyFrom(newLine);
-        } else */{
-          buffer.lines.push(newLine);
-        }
+        buffer.lines.push(newLine);
       } else {
         buffer.lines.splice(bottomRow + 1, 0, newLine);
       }

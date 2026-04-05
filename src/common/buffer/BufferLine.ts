@@ -86,7 +86,10 @@ export class LogicalLine {
     this._data = data;
   }
 
-  resizeData(cols: number): void {
+  /**
+   * @internal
+   */
+  public resizeData(cols: number): void {
     const uint32Cells = cols * CELL_SIZE;
     const oldByteLength = this._data.buffer.byteLength;
     const neededByteLength = uint32Cells * 4;
@@ -215,7 +218,11 @@ export class LogicalLine {
     return 0;
   }
 
-  trimLength(): void {
+  /**
+   * @internal
+   *
+   */
+  public trimLength(): void {
     let index = this.length;
     while (index > 0) {
       index--;
@@ -250,6 +257,7 @@ export class LogicalLine {
    *
    * @param startCol The column to start the string (0-based inclusive).
    * @param endCol The column to end the string (0-based exclusive).
+   * @param dataLength ignore _data after dataLength
    * @param outColumns if specified, this array will be filled with column numbers such that
    * `returnedString[i]` is displayed at `outColumns[i]` column. `outColumns[returnedString.length]`
    * is where the character following `returnedString` will be displayed.
@@ -301,7 +309,7 @@ export class LogicalLine {
  */
 export class BufferLine implements IBufferLine {
   public logicalLine: LogicalLine;
-  nextBufferLine: BufferLine | undefined;
+  public nextBufferLine: BufferLine | undefined;
 
   /** Number of logical columns in previous rows.
    * Also: logical column number (column number assuming infinitely-wide
@@ -312,7 +320,7 @@ export class BufferLine implements IBufferLine {
    * the terminal in columns) but may be slightly
    * different when a wide character at column W-1 must wrap "early".
    */
-  startColumn: number = 0;
+  public startColumn: number = 0;
 
   public length: number;
 
@@ -320,7 +328,7 @@ export class BufferLine implements IBufferLine {
    * Last LogicalColumn of this BufferLine.
    * @internal
    */
-  get validEnd(): LogicalColumn {
+  public get validEnd(): LogicalColumn {
     return this.nextBufferLine ? this.nextBufferLine.startColumn : this.logicalLine.length;
   }
 
@@ -771,7 +779,7 @@ export class BufferLine implements IBufferLine {
     endCol += lineStart;
     const paddingNeeded = trimRight || endCol <= validEnd ? 0
       : endCol - validEnd;
-    const result = lline.translateToString(startCol, endCol, endCol- paddingNeeded, outColumns);
+    const result = lline.translateToString(startCol, endCol, endCol - paddingNeeded, outColumns);
     if (outColumns && lineStart) {
       for (let i = outColumns.length; --i >= 0; ) {
         outColumns[i] -= lineStart;
