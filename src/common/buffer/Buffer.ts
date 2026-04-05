@@ -181,9 +181,6 @@ export class Buffer implements IBuffer {
   public resize(newCols: number, newRows: number): void {
     // store reference to null cell with default attrs
 
-    // count bufferlines with overly big memory to be cleaned afterwards
-    let dirtyMemoryLines = 0; // FIXME
-
     // Increase max length if needed before adjustments to allow space to fill
     // as required.
     const newMaxLength = this._getCorrectBufferLength(newRows);
@@ -202,8 +199,6 @@ export class Buffer implements IBuffer {
       if (this._cols < newCols) {
         for (let i = 0; i < this.lines.length; i++) {
           this.lines.get(i)!.length = newCols;
-          // +boolean for fast 0 or 1 conversion
-          // FIXME dirtyMemoryLines += +this.lines.get(i)!.resize(newCols, nullCell);
         }
       }
 
@@ -283,8 +278,6 @@ export class Buffer implements IBuffer {
       if (this._cols > newCols) {
         for (let i = 0; i < this.lines.length; i++) {
           this.lines.get(i)!.length = newCols;
-          // +boolean for fast 0 or 1 conversion
-          // FIXME dirtyMemoryLines += +this.lines.get(i)!.resize(newCols, nullCell);
         }
       }
     }
