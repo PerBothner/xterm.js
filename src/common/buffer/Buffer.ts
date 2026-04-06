@@ -7,7 +7,6 @@ import { CircularList, IInsertEvent } from 'common/CircularList';
 import { IAttributeData, IBufferLine, ICellData, ICharset } from 'common/Types';
 import { ExtendedAttrs } from 'common/buffer/AttributeData';
 import { BufferLine, LogicalLine, DEFAULT_ATTR_DATA } from 'common/buffer/BufferLine';
-import { reflowLargerApplyNewLayout, reflowLargerCreateNewLayout } from 'common/buffer/BufferReflow';
 import { CellData } from 'common/buffer/CellData';
 import { NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR, WHITESPACE_CELL_CODE, WHITESPACE_CELL_WIDTH } from 'common/buffer/Constants';
 import { Marker } from 'common/buffer/Marker';
@@ -314,17 +313,17 @@ export class Buffer implements IBuffer {
   /**
    * Evaluates and returns indexes to be removed after a reflow larger occurs. Lines will be removed
    * when a wrapped line unwraps.
-   * @param lines The buffer lines.
    * @param oldCols The columns before resize
    * @param newCols The columns after resize.
-   * @param bufferAbsoluteY The absolute y position of the cursor (baseY + cursorY).
-   * @param nullCell The cell data to use when filling in empty cells.
-   * @param reflowCursorLine Whether to reflow the line containing the cursor.
    */
-  private _reflowLargerGetLinesToRemove(lines: CircularList<IBufferLine>, oldCols: number, newCols: number, bufferAbsoluteY: number, nullCell: ICellData, reflowCursorLine: boolean): number[] {
-  // Gather all BufferLines that need to be removed from the Buffer here so that they can be
-  // batched up and only committed once
+  private _reflowLargerGetLinesToRemove(oldCols: number, newCols: number): number[] {
+    // Gather all BufferLines that need to be removed from the Buffer here so that they can be
+    // batched up and only committed once
     const toRemove: number[] = [];
+    const lines = this.lines;
+    const bufferAbsoluteY = this.ybase + this.y;
+    // Whether to reflow the line containing the cursor.
+    const reflowCursorLine = this._optionsService.rawOptions.reflowCursorLine;
 
     for (let y = 0; y < lines.length - 1; y++) {
       // Check if this row is wrapped
@@ -365,13 +364,50 @@ export class Buffer implements IBuffer {
   }
 
   private _reflowLarger(newCols: number, newRows: number): void {
-    const reflowCursorLine = this._optionsService.rawOptions.reflowCursorLine;
-    const toRemove: number[] = this._reflowLargerGetLinesToRemove(this.lines, this._cols, newCols, this.ybase + this.y, this.getNullCell(DEFAULT_ATTR_DATA), reflowCursorLine);
+    const toRemove: number[] = this._reflowLargerGetLinesToRemove(this._cols, newCols);
     if (toRemove.length > 0) {
-      const newLayoutResult = reflowLargerCreateNewLayout(this.lines, toRemove);
-      reflowLargerApplyNewLayout(this.lines, newLayoutResult.layout);
-      this._reflowLargerAdjustViewport(newCols, newRows, newLayoutResult.countRemoved);
+      const countRemoved = this._reflowLargerNewLayout(this.lines, toRemove);
+      this._reflowLargerAdjustViewport(newCols, newRows, countRemoved);
     }
+  }
+
+  /**
+   * Creates and return the new layout for lines given an array of indexes to be removed.
+   * @param lines The buffer lines.
+   * @param toRemove The indexes to remove.
+   */
+  private _reflowLargerNewLayout(lines: CircularList<IBufferLine>, toRemove: number[]): number {
+    const newLayout: BufferLine[] = [];
+    // First iterate through the list and get the actual indexes to use for rows
+    let nextToRemoveIndex = 0;
+    let nextToRemoveStart = toRemove[nextToRemoveIndex];
+    let countRemovedSoFar = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (nextToRemoveStart === i) {
+        const countToRemove = toRemove[++nextToRemoveIndex];
+
+        // Tell markers that there was a deletion
+        lines.onDeleteEmitter.fire({
+          index: i - countRemovedSoFar,
+          amount: countToRemove
+        });
+
+        i += countToRemove - 1;
+        countRemovedSoFar += countToRemove;
+        nextToRemoveStart = toRemove[++nextToRemoveIndex];
+      } else {
+        // Record original lines so they don't get overridden when we rearrange the list
+        newLayout.push(lines.get(i) as BufferLine);
+      }
+    }
+    // Applies a new layout to the buffer. This essentially does the same as many splice calls but
+    // it's done all at once in a single iteration through the list since splice is very expensive.
+    // Now rearrange the list
+    for (let i = 0; i < newLayout.length; i++) {
+      lines.set(i, newLayout[i]);
+    }
+    lines.length = newLayout.length;
+    return countRemovedSoFar;
   }
 
   private _reflowLargerAdjustViewport(newCols: number, newRows: number, countRemoved: number): void {
@@ -395,6 +431,7 @@ export class Buffer implements IBuffer {
     }
     this.savedY = Math.max(this.savedY - countRemoved, 0);
   }
+
   private _reflowLine(wrappedLines: BufferLine[], newCols: number): BufferLine[] {
     const newLines: BufferLine[] = [];
     let startCol = 0;

@@ -74,11 +74,11 @@ export class LogicalLine {
    */
   public _extendedAttrs: {[index: LogicalColumn]: IExtendedAttrs | undefined} = {};
 
-  public reflowNeeded: boolean = false;
   public firstBufferLine: BufferLine | undefined;
   public backgroundColor: number = 0;
   /**
    * Logical "trimmed" length of line.
+   * Does not change on buffer reflow.
    * Must be no more than this._data.length / 3. */
   public length: number = 0;
 
