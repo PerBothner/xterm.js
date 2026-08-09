@@ -255,6 +255,7 @@ Xterm.js is used in many world-class applications to provide great terminal expe
 - [**Orca**](https://github.com/stablyai/orca): Agentic development environment for 100x builders.
 - [**4bit**](https://ciembor.github.io/4bit): Terminal Color Scheme Designer.
 - [**Cate**](https://github.com/0-AI-UG/cate): Open source desktop IDE on an infinite zoomable canvas. Editor, browser, and terminal panels float in spatial space; the terminals are xterm.js with the WebGL addon, backed by node-pty.
+- [**OmnyShell PWA**](https://github.com/OmnyGrid/omnyshell_web): Web client for [**OmnyShell**](https://github.com/OmnyGrid/omnyshell), featuring remote terminals, a built-in IDE, AI-assisted workflows, and detachable/resumable sessions for seamless browser-based access to nodes.
 - [**kmux**](https://github.com/kkd927/kmux): A keyboard-centric terminal workspace for running parallel AI coding agents side by side on macOS and Linux.
 - [**LynxHub**](https://github.com/KindaBrazy/LynxHub): Cross-platform, extensible terminal and browser for AI management.
 - [**Codeman**](https://github.com/Ark0N/Codeman): Self-hosted mission control for AI coding agents, streaming live tmux sessions to browser and phone.
