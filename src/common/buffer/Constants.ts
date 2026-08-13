@@ -33,6 +33,15 @@ export const WHITESPACE_CELL_CODE = 32;
 
 /**
  * Bitmasks for accessing data in `content`.
+ * Text contrent is one of:
+ * (a) Directly stored in the content word as a 21-bit Unicode code point.
+ * In this case CODEPOINT_MASK contains the codepoint.
+ * STORED_IN_CHARS_MASK and IS_COMBINED_MASK are always 0 in this case.
+ * (b) A substring of the LogicalLine's _chars property.
+ * In this case STORED_IN_CHARS_MASK is non-zero.
+ * IS_COMBINED_MASK may be zero or non-zero.
+ * The first char is in START_IN_CHARS_MASK and the length is in
+ * LENGTH_IN_CHARS_MASK.
  */
 export const enum Content {
   /**
@@ -71,7 +80,12 @@ export const enum Content {
    *                      `content |= width << Content.WIDTH_SHIFT;`
    */
   WIDTH_MASK = 0xC00000,   // 3 << 22
-  WIDTH_SHIFT = 22
+  WIDTH_SHIFT = 22,
+  START_IN_CHARS_MASK = 0x1FFFFF,
+  START_IN_CHARS_SHIFT = 0,
+  LENGTH_IN_CHARS_MASK = 0xFF000000,
+  LENGTH_IN_CHARS_SHIFT = 24,
+  STORED_IN_CHARS_MASK = LENGTH_IN_CHARS_MASK
 }
 
 export const enum Attributes {

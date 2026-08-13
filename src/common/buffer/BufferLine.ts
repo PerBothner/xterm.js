@@ -75,8 +75,12 @@ export class LogicalLine implements ILogicalLine {
    * @internal
    */
   public _data: Uint32Array;
-  /** Sparse cache; only rea`d when `IS_COMBINED_MASK` is set in `_data`. */
-  public _combined: {[index: LogicalColumn]: string} = {};
+  /**
+   * If charsIsTextValue is true: The text value of the line.
+   * If charsIsTextValue is false: Might only store combined character,
+   * and not necessarily in order.
+   */
+  protected _chars: string = '';
   /**
    * @internal
    */
@@ -90,6 +94,8 @@ export class LogicalLine implements ILogicalLine {
    * Must be no more than this._data.length / 3.
    */
   public length: number = 0;
+  /** If _chars is the text value of this line. */
+  protected _charsIsTextValue: boolean = false;
 
   constructor(cols: number = 0, data = new Uint32Array(cols * Constants.CELL_INDICIES)) {
     this._data = data;
@@ -125,7 +131,7 @@ export class LogicalLine implements ILogicalLine {
   public charStart(column: LogicalColumn): number {
     return column > this.length ? this.length
       : column > 0 && this.getWidth(column - 1) > 1 ? column - 1
-        : column;
+      : column;
   }
 
   /**
@@ -143,7 +149,7 @@ export class LogicalLine implements ILogicalLine {
     cell.fg = this._data[startIndex + Cell.FG];
     cell.bg = this._data[startIndex + Cell.BG];
     if (cell.content & Content.IS_COMBINED_MASK) {
-      cell.combinedData = this._combined[index];
+      cell.combinedData = this.getString(index);
     } else {
       cell.combinedData = '';
     }
@@ -159,15 +165,37 @@ export class LogicalLine implements ILogicalLine {
 
   /** Returns the string content of the cell. */
   public getString(index: number): string {
+    if (index >= this.length) {
+      return '';
+    }
     const content = this._data[index * Constants.CELL_INDICIES + Cell.CONTENT];
-    if (content & Content.IS_COMBINED_MASK) {
-      return this._combined[index];
+    if (content & Content.STORED_IN_CHARS_MASK) {
+      const start = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
+      const length = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
+      return this._chars.substring(start, start + length);
     }
     if (content & Content.CODEPOINT_MASK) {
       return stringFromCodePoint(content & Content.CODEPOINT_MASK);
     }
     // return empty string for empty cells
     return '';
+  }
+
+/**
+   * Get codepoint of the cell.
+   * To be in line with `code` in CharData this either returns
+   * a single UTF32 codepoint or the last codepoint of a combined string.
+   */
+  public getCodePoint(index: BufferColumn): number {
+    const content = this._data[index * Constants.CELL_INDICIES + Cell.CONTENT];
+    if (content & Content.STORED_IN_CHARS_MASK) {
+      const start = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
+      const length = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
+      return content & Content.IS_COMBINED_MASK
+        ? this._chars.charCodeAt(start + length - 1)
+        : (this._chars.codePointAt(start) ?? 0);
+    }
+    return content & Content.CODEPOINT_MASK;
   }
 
   /** Get state of protected flag. */
@@ -220,6 +248,7 @@ export class LogicalLine implements ILogicalLine {
       const data = new Uint32Array(Constants.CELL_INDICIES * cols);
       data.set(this._data);
       this._data = data;
+      /*
       // Remove any cut off combined data
       const keys = Object.keys(this._combined);
       for (let i = 0; i < keys.length; i++) {
@@ -228,6 +257,7 @@ export class LogicalLine implements ILogicalLine {
           delete this._combined[key];
         }
       }
+      */
       // remove any cut off extended attributes
       const extKeys = Object.keys(this._extendedAttrs);
       for (let i = 0; i < extKeys.length; i++) {
@@ -303,17 +333,21 @@ export class LogicalLine implements ILogicalLine {
     }
     $translateToStringBuilder.reset();
     while (startCol < endCol) {
+      const chars = this.getString(startCol);
+      /*
       const content = startCol >= dataLength ? 0
         : this._data[startCol * Constants.CELL_INDICIES + Cell.CONTENT];
       const cp = content & Content.CODEPOINT_MASK;
       const chars = (content & Content.IS_COMBINED_MASK) ? this._combined[startCol] : (cp) ? stringFromCodePoint(cp) : WHITESPACE_CELL_CHAR;
+      */
       $translateToStringBuilder.append(chars);
       if (outColumns) {
         for (let i = 0; i < chars.length; ++i) {
           outColumns.push(startCol);
         }
       }
-      startCol += (content >> Content.WIDTH_SHIFT) || 1; // always advance by at least 1
+      startCol++;
+      // startCol += (content >> Content.WIDTH_SHIFT) || 1; // always advance by at least 1
     }
     if (outColumns) {
       outColumns.push(startCol);
@@ -343,7 +377,6 @@ export class BufferLine implements IBufferLine {
   private _logicalLine: LogicalLine;
   public logical(): LogicalLine { return this._logicalLine; }
   public nextBufferLine: BufferLine | undefined;
-  protected _stringCacheEntryRef: WeakRef<IBufferLineStringCacheEntry> | undefined;
 
   /**
    * Number of logical columns in previous rows.
@@ -462,17 +495,7 @@ export class BufferLine implements IBufferLine {
    * a single UTF32 codepoint or the last codepoint of a combined string.
    */
   public getCodePoint(index: BufferColumn): number {
-    const lline = this._logicalLine;
-    const lcolumn: LogicalColumn = index + this.startColumn;
-    if (lcolumn >= this.validEnd) {
-      return 0;
-    }
-    const content = lline._data[lcolumn * Constants.CELL_INDICIES + Cell.CONTENT];
-    if (content & Content.IS_COMBINED_MASK) {
-      const combined = lline._combined[lcolumn];
-      return combined.charCodeAt(combined.length - 1);
-    }
-    return content & Content.CODEPOINT_MASK;
+    return this._logicalLine.getCodePoint(index + this.startColumn);
   }
 
   /** Test whether the cell contains a combined string. */
@@ -489,18 +512,7 @@ export class BufferLine implements IBufferLine {
   public getString(index: number): string {
     const lline = this._logicalLine;
     const lcolumn: LogicalColumn = index + this.startColumn;
-    if (lcolumn >= this.validEnd) {
-      return '';
-    }
-    const content = lline._data[lcolumn * Constants.CELL_INDICIES + Cell.CONTENT];
-    if (content & Content.IS_COMBINED_MASK) {
-      return lline._combined[lcolumn];
-    }
-    if (content & Content.CODEPOINT_MASK) {
-      return stringFromCodePoint(content & Content.CODEPOINT_MASK);
-    }
-    // return empty string for empty cells
-    return '';
+    return lline.getString(lcolumn);
   }
 
   /** Get state of protected flag. */
@@ -536,12 +548,18 @@ export class BufferLine implements IBufferLine {
    */
   public setCell(index: number, cell: ICellData): void {
     this._invalidateStringCache();
-    // this.logicalLine.setCell(index + this.startColumn, cell);
+    this.logicalLine.setCell(index + this.startColumn, cell);
+    /*
     const content = cell.content & (Content.CODEPOINT_MASK|Content.IS_COMBINED_MASK);
     this.setCellFromCodepoint(index, content, cell.getWidth(), cell);
     if (cell.content & Content.IS_COMBINED_MASK) {
-      this._logicalLine._combined[index + this.startColumn] = cell.combinedData;
+      const start = this._chars.length;
+      this._chars += cell.combinedData;
+      content = content & ~(Content.START_IN_CHARS_MASK|Content.LENGTH_IN_CHARS_MASK)
+        | (start << Content.START_IN_CHARS_SHIFT)
+        | (cell.combinedData.length << Content.LENGTH_IN_CHARS_SHIFT);
     }
+    */
   }
 
   /**
