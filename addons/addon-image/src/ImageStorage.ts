@@ -11,7 +11,6 @@ import type {
 import type { IBufferLine } from 'common/buffer/Types';
 import { CellData } from 'common/buffer/CellData';
 
-
 // fallback default cell size
 export const CELL_SIZE_DEFAULT: ICellSize = {
   width: 7,
