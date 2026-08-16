@@ -67,6 +67,8 @@ export interface IBufferLineStringCache {
   touch?(): void;
 }
 
+const EMPTY_DATA = new Uint32Array(0);
+
 /*
  * The data "model" of a line ignoring line wrapping.
  */
@@ -75,7 +77,7 @@ export class LogicalLine implements ILogicalLine {
    * @internal
    */
   public _data: Uint32Array;
-  /** Sparse cache; only rea`d when `IS_COMBINED_MASK` is set in `_data`. */
+  /** Sparse cache; only read when `IS_COMBINED_MASK` is set in `_data`. */
   public _combined: {[index: LogicalColumn]: string} = {};
   /**
    * @internal
@@ -91,7 +93,7 @@ export class LogicalLine implements ILogicalLine {
    */
   public length: number = 0;
 
-  constructor(cols: number = 0, data = new Uint32Array(cols * Constants.CELL_INDICIES)) {
+  constructor(cols: number = 0, data = cols === 0 ? EMPTY_DATA : new Uint32Array(cols * Constants.CELL_INDICIES)) {
     this._data = data;
   }
 
@@ -100,15 +102,11 @@ export class LogicalLine implements ILogicalLine {
    */
   public resizeData(cols: number): void {
     const uint32Cells = cols * Constants.CELL_INDICIES;
-    const oldByteLength = this._data.buffer.byteLength;
-    const neededByteLength = uint32Cells * 4;
-    if (oldByteLength >= neededByteLength) {
-      // optimization: avoid alloc and data copy if buffer has enough room
-      this._data = new Uint32Array(this._data.buffer, 0, uint32Cells);
-    } else {
-      // slow path: new alloc and full data copy
-      const buffer = new ArrayBuffer(Math.max(12 + neededByteLength,  (3 * oldByteLength) >> 1));
-      const data = new Uint32Array(buffer, 0, uint32Cells);
+    const oldLength = this._data.length;
+    if (uint32Cells >= oldLength) {
+      // increase by at least 50%
+      const newLength = Math.max(uint32Cells + 60, (3 * oldLength) >> 1);
+      const data = new Uint32Array(newLength);
       data.set(this._data);
       this._data = data;
     }
