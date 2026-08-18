@@ -41,6 +41,7 @@ export const DEFAULT_ATTR_DATA = Object.freeze(new AttributeData());
 // Work variables to avoid garbage collection
 let $startIndex = 0;
 const $workCell = new CellData();
+const $extended = DEFAULT_ATTR_DATA.extended.clone();
 
 
 /**
@@ -205,7 +206,11 @@ export class BufferLine implements IBufferLine {
     } else {
       // Do not mutate cell.extended in place: it may still reference this line's map entry from a
       // prior loadCell into a reused CellData (e.g. $workCell during insert/delete).
-      cell.extended = DEFAULT_ATTR_DATA.extended.clone();
+      // We use $extended as blueprint and reset the internals
+      // mimicking the ctor to avoid a new allocation.
+      cell.extended = $extended;
+      (cell.extended as any)._ext = 0;
+      (cell.extended as any)._urlId = 0;
     }
     return cell;
   }
