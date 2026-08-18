@@ -458,7 +458,7 @@ export class BufferLine implements IBufferLine {
   }
 
   /** alter to a full copy of line  */
-  public copyFrom(line: BufferLine): void {
+  public copyFrom(line: BufferLine, blank?: boolean): void {
     this._invalidateStringCache();
     if (this.length !== line.length) {
       this._data = new Uint32Array(line._data);
@@ -467,16 +467,27 @@ export class BufferLine implements IBufferLine {
       this._data.set(line._data);
     }
     this.length = line.length;
-    this._copySparseMapsFrom(line);
+    if (blank) {
+      // a blank line may never hold combined or extended attrs,
+      // thus we can skip handling them
+      this._combined = {};
+      this._extendedAttrs = {};
+    } else {
+      this._copySparseMapsFrom(line);
+    }
     this.isWrapped = line.isWrapped;
   }
 
   /** create a new clone */
-  public clone(): IBufferLine {
+  public clone(blank?: boolean): IBufferLine {
     const newLine = new BufferLine(this._stringCache, 0, undefined, false);
     newLine._data = new Uint32Array(this._data);
     newLine.length = this.length;
-    newLine._copySparseMapsFrom(this);
+    if (!blank) {
+      // a blank line may never hold combined or extended attrs,
+      // thus we can skip handling them
+      newLine._copySparseMapsFrom(this);
+    }
     newLine.isWrapped = this.isWrapped;
     return newLine;
   }
