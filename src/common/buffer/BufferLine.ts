@@ -560,12 +560,12 @@ export class BufferLine implements IBufferLine {
     if (outColumns) {
       outColumns.length = 0;
     }
-    const cellContens: string[] = [];
+    const cellContents: string[] = [];
     while (startCol < endCol) {
       const content = this._data[startCol * Constants.CELL_INDICIES + Cell.CONTENT];
       const cp = content & Content.CODEPOINT_MASK;
       const chars = (content & Content.IS_COMBINED_MASK) ? this._combined[startCol] : (cp) ? stringFromCodePoint(cp) : WHITESPACE_CELL_CHAR;
-      cellContens.push(chars);
+      cellContents.push(chars);
       if (outColumns) {
         for (let i = 0; i < chars.length; ++i) {
           outColumns.push(startCol);
@@ -576,7 +576,7 @@ export class BufferLine implements IBufferLine {
     if (outColumns) {
       outColumns.push(startCol);
     }
-    const result = cellContens.join('');
+    const result = cellContents.join('');
     if (isCanonical) {
       this._cache = result;
       this._cacheValid = true;
