@@ -484,8 +484,6 @@ export class BufferLine implements IBufferLine {
       // thus we can skip handling them
       newLine._copySparseMapsFrom(this);
     }
-    this._cache = '';
-    this._cacheValid = false;
     newLine.isWrapped = this.isWrapped;
     return newLine;
   }
