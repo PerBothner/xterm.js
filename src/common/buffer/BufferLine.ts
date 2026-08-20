@@ -36,12 +36,19 @@ const enum Cell {
   BG = 2  // currently unused
 }
 
+
+interface IExtendedAttrsExt extends IExtendedAttrs {
+  _ext: number;
+  _urlId: number;
+}
+
+
 export const DEFAULT_ATTR_DATA = Object.freeze(new AttributeData());
 
 // Work variables to avoid garbage collection
 let $startIndex = 0;
 const $workCell = new CellData();
-const $extended = DEFAULT_ATTR_DATA.extended.clone();
+const $extended = DEFAULT_ATTR_DATA.extended.clone() as IExtendedAttrsExt;
 
 
 /**
@@ -208,9 +215,9 @@ export class BufferLine implements IBufferLine {
       // prior loadCell into a reused CellData (e.g. $workCell during insert/delete).
       // We use $extended as blueprint and reset the internals
       // mimicking the ctor to avoid a new allocation.
+      $extended._ext = 0;
+      $extended._urlId = 0;
       cell.extended = $extended;
-      (cell.extended as any)._ext = 0;
-      (cell.extended as any)._urlId = 0;
     }
     return cell;
   }
@@ -241,9 +248,10 @@ export class BufferLine implements IBufferLine {
     if (attrs.bg & BgFlags.HAS_EXTENDED) {
       this._extendedAttrs[index] = attrs.extended;
     }
-    this._data[index * Constants.CELL_INDICIES + Cell.CONTENT] = codePoint | (width << Content.WIDTH_SHIFT);
-    this._data[index * Constants.CELL_INDICIES + Cell.FG] = attrs.fg;
-    this._data[index * Constants.CELL_INDICIES + Cell.BG] = attrs.bg;
+    const $idx = index * Constants.CELL_INDICIES;
+    this._data[$idx + Cell.CONTENT] = codePoint | (width << Content.WIDTH_SHIFT);
+    this._data[$idx + Cell.FG] = attrs.fg;
+    this._data[$idx + Cell.BG] = attrs.bg;
   }
 
   /**
