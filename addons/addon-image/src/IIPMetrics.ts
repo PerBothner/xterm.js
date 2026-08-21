@@ -94,15 +94,15 @@ export function imageType(d: Uint8Array): IMetrics {
     }
     if (pos !== -1) {
       // dimensions are in BE at +8 (width) at +12 (height)
-      const width = 
-        d[pos +  8] << 24 | 
-        d[pos +  9] << 16 | 
-        d[pos + 10] <<  8 | 
+      const width =
+        d[pos +  8] << 24 |
+        d[pos +  9] << 16 |
+        d[pos + 10] <<  8 |
         d[pos + 11];
-      const height = 
-        d[pos + 12] << 24 | 
-        d[pos + 13] << 16 | 
-        d[pos + 14] <<  8 | 
+      const height =
+        d[pos + 12] << 24 |
+        d[pos + 13] << 16 |
+        d[pos + 14] <<  8 |
         d[pos + 15];
       if (width > 0 && height > 0) {
         return { mime: 'image/avif', width, height };
