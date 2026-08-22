@@ -9,7 +9,6 @@ import { IAttributeData, IBuffer, IBufferLine, ICellData } from './Types';
 import { ICharset } from '../Types';
 import { ExtendedAttrs } from './AttributeData';
 import { BufferLine, LogicalLine, DEFAULT_ATTR_DATA } from './BufferLine';
-import { BufferLineStringCache } from './BufferLineStringCache';
 import { reflowLine, reflowLargerApplyNewLayout, reflowLargerCreateNewLayout, reflowLargerGetLinesToRemove } from './BufferReflow';
 import { CellData } from './CellData';
 import { NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR, WHITESPACE_CELL_CODE, WHITESPACE_CELL_WIDTH } from './Constants';
@@ -50,8 +49,6 @@ export class Buffer extends Disposable implements IBuffer {
   private _cols: number;
   private _rows: number;
   private _isClearing: boolean = false;
-  private readonly _stringCache: BufferLineStringCache;
-
   constructor(
     private _hasScrollback: boolean,
     private _optionsService: IOptionsService,
@@ -72,7 +69,6 @@ export class Buffer extends Disposable implements IBuffer {
         const prev = first.getPreviousLine();
         prev && first.asUnwrapped(prev);
       }});
-    this._stringCache = this._register(new BufferLineStringCache());
   }
 
   public getNullCell(attr?: IAttributeData): ICellData {
@@ -110,7 +106,7 @@ export class Buffer extends Disposable implements IBuffer {
     logicalLine: LogicalLine = new LogicalLine()
   ): IBufferLine {
     logicalLine.backgroundColor = attr.bg & ~0xFC000000;
-    return new BufferLine(this._stringCache, this._cols, logicalLine);
+    return new BufferLine(this._cols, logicalLine);
   }
 
   public get hasScrollback(): boolean {
@@ -167,7 +163,6 @@ export class Buffer extends Disposable implements IBuffer {
    * Clears the buffer to its initial state, discarding all previous data.
    */
   public clear(): void {
-    this._stringCache.clear();
     this.ydisp = 0;
     this.ybase = 0;
     this.y = 0;
@@ -184,8 +179,6 @@ export class Buffer extends Disposable implements IBuffer {
    * @param newRows The new number of rows.
    */
   public resize(newCols: number, newRows: number): void {
-    this._stringCache.clear();
-
     // Increase max length if needed before adjustments to allow space to fill
     // as required.
     const newMaxLength = this._getCorrectBufferLength(newRows);
@@ -215,7 +208,7 @@ export class Buffer extends Disposable implements IBuffer {
             if (this._optionsService.rawOptions.windowsPty.backend !== undefined || this._optionsService.rawOptions.windowsPty.buildNumber !== undefined) {
               // Just add the new missing rows on Windows as conpty reprints the screen with its
               // view of the world. Once a line enters scrollback for conpty it remains there
-              this.lines.push(new BufferLine(this._stringCache, newCols));
+              this.lines.push(new BufferLine(newCols));
             } else {
               if (this.ybase > 0 && this.lines.length <= this.ybase + this.y + addToY + 1) {
                 // There is room above the buffer and there are no empty elements below the line,
@@ -229,7 +222,7 @@ export class Buffer extends Disposable implements IBuffer {
               } else {
                 // Add a blank line if there is no buffer left at the top to scroll to, or if there
                 // are blank lines after the cursor
-                this.lines.push(new BufferLine(this._stringCache, newCols));
+                this.lines.push(new BufferLine(newCols));
               }
             }
           }
@@ -339,7 +332,7 @@ export class Buffer extends Disposable implements IBuffer {
         }
         if (this.lines.length < newRows) {
           // Add an extra row at the bottom of the viewport
-          this.lines.push(new BufferLine(this._stringCache, newCols));
+          this.lines.push(new BufferLine(newCols));
         }
       } else {
         if (this.ydisp === this.ybase) {

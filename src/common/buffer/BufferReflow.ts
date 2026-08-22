@@ -20,6 +20,7 @@ export function reflowLine(wrappedLines: BufferLine[], newCols: number): BufferL
   const logical = curLine.logical();
   for (;;) {
     const endCol = logical.charStart(startCol + newCols);
+    (curLine as BufferLine)._cacheValid = false;
     if (endCol >= logical.length) {
       curLine.nextBufferLine = undefined;
       curLine.startColumn = startCol;
@@ -30,7 +31,7 @@ export function reflowLine(wrappedLines: BufferLine[], newCols: number): BufferL
       newLine = wrappedLines[curRow];
       newLine.length = newCols;
     } else {
-      newLine = new BufferLine(curLine._stringCache, newCols, logical);
+      newLine = new BufferLine(newCols, logical);
       newLines.push(newLine);
     }
     curRow++;

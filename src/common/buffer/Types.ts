@@ -159,14 +159,16 @@ export interface IMarker extends IDisposable {
 
 export interface IBuffer {
   readonly lines: ICircularList<IBufferLine>;
-  /** Number of rows above top visible row.
+  /**
+   * Number of rows above top visible row.
    * Similar to scrollTop (i.e. affected by scrollbar), but in rows.
    */
   ydisp: number;
   /** Number of rows in the scrollback buffer, above the home row. */
   ybase: number;
 
-  /** Row number relative to the "home" row, zero-origin.
+  /**
+   * Row number relative to the "home" row, zero-origin.
    * This is the row number changed/reported by cursor escape sequences,
    * except that y is 0-origin: y=0 when we're at the home row.
    * Currently assumed to be >= 0, but future may allow negative - i.e.
@@ -174,7 +176,8 @@ export interface IBuffer {
    */
   y: number;
 
-  /** Column number, zero-origin.
+  /**
+   * Column number, zero-origin.
    * Valid range is 0 through C (inclusive), if C is terminal width in columns.
    * The first (left-most) column is 0.
    * The right-most column is either C-1 (before the right-most column, and
