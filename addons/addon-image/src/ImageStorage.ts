@@ -427,55 +427,46 @@ export class ImageStorage implements IDisposable {
     const placeholderCalls: { col: number, row: number, count: number }[] = [];
 
     // walk all cells in viewport and collect tiles found
-    // Note: We check _extendedAttrs directly (not just HAS_EXTENDED flag)
-    // because text writes clear the BG flag but leave image tile data intact.
-    // This lets top-layer images survive text overwrites (kitty C=1 behavior).
     for (let row = start; row <= end; ++row) {
       const line = buffer.lines.get(row + buffer.ydisp) as IBufferLineExt;
       if (!line) return;
       for (let col = 0; col < cols; ++col) {
-        let e: IExtendedAttrsImage;
         if (line.getBg(col) & BgFlags.HAS_EXTENDED) {
-          e = line._extendedAttrs[col] ?? EMPTY_ATTRS;
-        } else {
-          const maybeImg = line._extendedAttrs[col] as IExtendedAttrsImage | undefined;
-          if (!maybeImg || maybeImg.imageId === undefined || maybeImg.imageId === -1) {
+          let e: IExtendedAttrsImage = line._extendedAttrs[col] ?? EMPTY_ATTRS;
+          const imageId = e.imageId;
+          if (imageId === undefined || imageId === -1) {
             continue;
           }
-          e = maybeImg;
-        }
-        const imageId = e.imageId;
-        if (imageId === undefined || imageId === -1) {
-          continue;
-        }
-        const imgSpec = this._images.get(imageId);
-        if (e.tileId !== -1) {
-          const startTile = e.tileId;
-          const startCol = col;
-          let count = 1;
-          /**
-           * merge tiles to the right into a single draw call, if:
-           * - not at end of line
-           * - cell has same image id
-           * - cell has consecutive tile id
-           * Also check _extendedAttrs directly for cells where text cleared HAS_EXTENDED.
-           */
-          while (++col < cols) {
-            const nextE = line._extendedAttrs[col] as IExtendedAttrsImage | undefined;
-            if (!nextE || nextE.imageId !== imageId || nextE.tileId !== startTile + count) {
-              break;
+          const imgSpec = this._images.get(imageId);
+          if (e.tileId !== -1) {
+            const startTile = e.tileId;
+            const startCol = col;
+            let count = 1;
+            /**
+             * merge tiles to the right into a single draw call, if:
+             * - not at end of line
+             * - cell has same image id
+             * - cell has consecutive tile id
+             */
+            while (
+              ++col < cols
+              && (line.getBg(col) & BgFlags.HAS_EXTENDED)
+              && (e = line._extendedAttrs[col] ?? EMPTY_ATTRS)
+              && (e.imageId === imageId)
+              && (e.tileId === startTile + count)
+            ) {
+              count++;
             }
-            count++;
-          }
-          col--;
-          if (imgSpec) {
-            if (imgSpec.actual) {
-              drawCalls.push({ imgSpec, tileId: startTile, col: startCol, row, count });
+            col--;
+            if (imgSpec) {
+              if (imgSpec.actual) {
+                drawCalls.push({ imgSpec, tileId: startTile, col: startCol, row, count });
+              }
+            } else if (this._opts.showPlaceholder) {
+              placeholderCalls.push({ col: startCol, row, count });
             }
-          } else if (this._opts.showPlaceholder) {
-            placeholderCalls.push({ col: startCol, row, count });
+            this._fullyCleared = false;
           }
-          this._fullyCleared = false;
         }
       }
     }
