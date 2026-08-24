@@ -75,7 +75,7 @@ export class BufferService extends Disposable implements IBufferService {
     if (isWrapped) {
       lline = oldLine.logical();
     } else {
-      lline = new LogicalLine(0);
+      lline = new LogicalLine(this.cols);
     }
     const newLine = buffer.getBlankLine(eraseAttr, lline) as BufferLine;
     if (isWrapped && oldLine) {

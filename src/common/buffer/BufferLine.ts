@@ -206,6 +206,39 @@ export class LogicalLine implements ILogicalLine {
     this._data[index * Constants.CELL_INDICIES + Cell.BG] = attrs.bg;
   }
 
+  public setCellsFromCodepoints(index: LogicalColumn, cols: number, codePoints: Uint32Array, start: number, end: number, attrs: IAttributeData): void {
+    if (index + cols >= this.length) {
+      this.resizeData(index + cols);
+      for (let i = this.length; i < index; i++) {
+        this._data[i * Constants.CELL_INDICIES + Cell.CONTENT] = NULL_CELL_WIDTH << Content.WIDTH_SHIFT;
+        this._data[i * Constants.CELL_INDICIES + Cell.FG] = 0;
+        this._data[i * Constants.CELL_INDICIES + Cell.BG] = this.backgroundColor;
+      }
+      this.length = index + cols;
+    }
+    const data = this._data;
+    const fg = attrs.fg;
+    const bg = attrs.bg;
+    const ext = (attrs.bg & BgFlags.HAS_EXTENDED) ? attrs.extended : undefined;
+    let j = index * Constants.CELL_INDICIES;
+    for (let i = start; i < end; i++) {
+      const contents = codePoints[i];
+      let width = (contents >>> Content.WIDTH_SHIFT);
+      data[j + Cell.CONTENT] = contents;
+      data[j + Cell.FG] = fg;
+      data[j + Cell.BG] = bg;
+      ext && (this._extendedAttrs[index] = ext);
+      j += 3; index++;
+      while (--width > 0) {
+        data[j + Cell.CONTENT] = 0;
+        data[j + Cell.FG] = fg;
+        data[j + Cell.BG] = bg;
+        ext && (this._extendedAttrs[index] = ext);
+        j += 3; index++;
+      }
+    }
+  }
+
   /**
    * Cleanup underlying array buffer.
    * A cleanup will be triggered if the array buffer exceeds the actual used
@@ -553,6 +586,10 @@ export class BufferLine implements IBufferLine {
     this._cacheValid = false;
     this._logicalLine.setCellFromCodepoint(index + this.startColumn,
       codePoint, width, attrs);
+  }
+  public setCellsFromCodepoints(index: number, cols: number, codePoints: Uint32Array, start: number, end: number, attrs: IAttributeData): void {
+    this._cacheValid = false;
+    this._logicalLine.setCellsFromCodepoints(index + this.startColumn, cols, codePoints, start, end, attrs);
   }
 
   /**

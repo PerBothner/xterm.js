@@ -49,6 +49,7 @@ export class Buffer extends Disposable implements IBuffer {
   private _cols: number;
   private _rows: number;
   private _isClearing: boolean = false;
+
   constructor(
     private _hasScrollback: boolean,
     private _optionsService: IOptionsService,

@@ -514,16 +514,20 @@ export class InputHandler extends Disposable implements IInputHandler {
     }
   }
 
+  /**
+   * Write printable characters.
+   * Character to write are code points stored in data.slice(start, end).
+   * Note that data.slice(start, end) might be modified in place.
+   */
   public print(data: Uint32Array, start: number, end: number): void {
     let code: number;
-    let chWidth: number;
     const charset = this._charsetService.charset;
     const screenReaderMode = this._optionsService.rawOptions.screenReaderMode;
     const cols = this._bufferService.cols;
     const wraparoundMode = this._coreService.decPrivateModes.wraparound;
     const insertMode = this._coreService.modes.insertMode;
     const curAttr = this._curAttrData;
-    let bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y);
+    let bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y) as BufferLine;
 
     // Defensive check: bufferRow can be undefined if a resize occurred mid-write due to async
     // scheduling gaps in WriteBuffer. See https://github.com/xtermjs/xterm.js/issues/5597
@@ -539,43 +543,79 @@ export class InputHandler extends Disposable implements IInputHandler {
     }
 
     let precedingJoinState = this._parser.precedingJoinState;
-    for (let pos = start; pos < end; ++pos) {
-      code = data[pos];
+    let pendingStart = -1;
+    let pendingCols = 0;
+    for (let pos = start; ; ++pos) {
+      let oldWidth;
+      let chWidth;
+      let shouldJoin;
+      let overflowing;
+      if (pos < end) {
+        code = data[pos];
 
-      // Soft hyphen's (U+00AD) behavior is ambiguous and differs across terminals. We opt to treat
-      // it as a zero-width hint to text layout engines and simply ignore it.
-      if (code === 0xAD) {
-        continue;
-      }
-
-      // get charset replacement character
-      // charset is only defined for ASCII, therefore we only
-      // search for an replacement char if code < 127
-      if (code < 127 && charset) {
-        const ch = charset[String.fromCharCode(code)];
-        if (ch) {
-          code = ch.charCodeAt(0);
+        // Soft hyphen's (U+00AD) behavior is ambiguous and differs across terminals.
+        // We opt to treat it as a zero-width hint to text layout engines and simply ignore it.
+        if (code === 0xAD) {
+          // Not very efficient, but simple.
+          pendingStart < 0 || data.copyWithin(pos, pos + 1, end);
+          continue;
         }
-      }
 
-      const currentInfo = this._unicodeService.charProperties(code, precedingJoinState);
-      chWidth = UnicodeService.extractWidth(currentInfo);
-      const shouldJoin = UnicodeService.extractShouldJoin(currentInfo);
-      const oldWidth = shouldJoin ? UnicodeService.extractWidth(precedingJoinState) : 0;
-      precedingJoinState = currentInfo;
+        // get charset replacement character
+        // charset is only defined for ASCII, therefore we only
+        // search for an replacement char if code < 127
+        if (code < 127 && charset) {
+          const ch = charset[String.fromCharCode(code)];
+          if (ch) {
+            code = ch.charCodeAt(0);
+            data[pos] = code;
+          }
+        }
 
-      if (screenReaderMode) {
-        this._onA11yChar.fire(stringFromCodePoint(code));
+        const currentInfo = this._unicodeService.charProperties(code, precedingJoinState);
+        chWidth = UnicodeService.extractWidth(currentInfo);
+        shouldJoin = UnicodeService.extractShouldJoin(currentInfo);
+        oldWidth = shouldJoin ? UnicodeService.extractWidth(precedingJoinState) : 0;
+        precedingJoinState = currentInfo;
+
+        if (screenReaderMode) {
+          this._onA11yChar.fire(stringFromCodePoint(code));
+        }
+        const linkId = this._getCurrentLinkId();
+        if (linkId) {
+          this._oscLinkService.addLineToLink(linkId, this._activeBuffer.ybase + this._activeBuffer.y);
+        }
+        overflowing = this._activeBuffer.x + chWidth - oldWidth > cols;
+      } else {
+        oldWidth = 0;
+        chWidth = 0;
+        code = -1;
+        shouldJoin = false;
       }
-      const linkId = this._getCurrentLinkId();
-      if (linkId) {
-        this._oscLinkService.addLineToLink(linkId, this._activeBuffer.ybase + this._activeBuffer.y);
+      if (pendingStart >= 0 && (code < 0 || overflowing || shouldJoin)) {
+        // insert mode: move characters to right
+        if (insertMode) {
+          // right shift cells according to the width
+          bufferRow.insertCells(this._activeBuffer.x - pendingCols, pendingCols, this._activeBuffer.getNullCell(curAttr));
+          // test last cell - since the last cell has only room for
+          // a halfwidth char any fullwidth shifted there is lost
+          // and will be set to empty cell
+          if (bufferRow.getWidth(cols - 1) === 2) {
+            bufferRow.setCellFromCodepoint(cols - 1, NULL_CELL_CODE, NULL_CELL_WIDTH, curAttr);
+          }
+        }
+        bufferRow.setCellsFromCodepoints(this._activeBuffer.x - pendingCols, pendingCols, data, pendingStart, pos, curAttr);
+        pendingStart = -1;
+        pendingCols = 0;
+      }
+      if (code < 0) {
+        break;
       }
 
       // goto next line if ch would overflow
       // NOTE: To avoid costly width checks here,
       // the terminal does not allow a cols < 2.
-      if (this._activeBuffer.x + chWidth - oldWidth > cols) {
+      if (overflowing) {
         // autowrap - DECAWM
         // automatically wraps to the beginning of the next line
         if (wraparoundMode) {
@@ -595,7 +635,7 @@ export class InputHandler extends Disposable implements IInputHandler {
             this._activeBuffer.setWrapped(this._activeBuffer.ybase + this._activeBuffer.y, true);
           }
           // row changed, get it again
-          bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y);
+          bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y) as BufferLine
           if (!bufferRow) {
             return;
           }
@@ -634,30 +674,11 @@ export class InputHandler extends Disposable implements IInputHandler {
         continue;
       }
 
-      // insert mode: move characters to right
-      if (insertMode) {
-        // right shift cells according to the width
-        bufferRow.insertCells(this._activeBuffer.x, chWidth - oldWidth, this._activeBuffer.getNullCell(curAttr));
-        // test last cell - since the last cell has only room for
-        // a halfwidth char any fullwidth shifted there is lost
-        // and will be set to empty cell
-        if (bufferRow.getWidth(cols - 1) === 2) {
-          bufferRow.setCellFromCodepoint(cols - 1, NULL_CELL_CODE, NULL_CELL_WIDTH, curAttr);
-        }
-      }
-
-      // write current char to buffer and advance cursor
-      bufferRow.setCellFromCodepoint(this._activeBuffer.x++, code, chWidth, curAttr);
-
-      // fullwidth char - also set next cell to placeholder stub and advance cursor
-      // for graphemes bigger than fullwidth we can simply loop to zero
-      // we already made sure above, that this._activeBuffer.x + chWidth will not overflow right
-      if (chWidth > 0) {
-        while (--chWidth) {
-          // other than a regular empty cell a cell following a wide char has no width
-          bufferRow.setCellFromCodepoint(this._activeBuffer.x++, 0, 0, curAttr);
-        }
-      }
+      data[pos] = code | (chWidth << Content.WIDTH_SHIFT);
+      if (pendingStart < 0) pendingStart = pos;
+      pendingCols += chWidth;
+      // bufferRow.setCellsFromCodepoints(this._activeBuffer.x, chWidth, data, pos, pos+1, curAttr);
+      this._activeBuffer.x += chWidth;
     }
 
     this._parser.precedingJoinState = precedingJoinState;
