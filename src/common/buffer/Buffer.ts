@@ -104,7 +104,7 @@ export class Buffer extends Disposable implements IBuffer {
    */
   public getBlankLine(
     attr: IAttributeData,
-    logicalLine: LogicalLine = new LogicalLine()
+    logicalLine: LogicalLine = new LogicalLine(this._cols)
   ): IBufferLine {
     logicalLine.backgroundColor = attr.bg & ~0xFC000000;
     return new BufferLine(this._cols, logicalLine);
@@ -112,6 +112,21 @@ export class Buffer extends Disposable implements IBuffer {
 
   public get hasScrollback(): boolean {
     return this._hasScrollback && this.lines.maxLength > this._rows;
+  }
+
+  /**
+   * Should we allocate a big block to be used for multiple lines?
+   * This makes sense for the regular buffer, which is "mostly-append".
+   * Furthermore, a logical line can have hightly-variable length,
+   * so it makes sense to allocate from the end of a large buffer, and
+   * for sucessive lines, keep alocating from the same buffer as
+   * long it has room.
+   * For the alternate buffer, there is a bounded number of lines,
+   * and a lot more random-access and back-and-forth.
+   * @returns 0 if the answer is no, otherwise suggested block size
+   */
+  public allocateBigBlock(): number {
+    return this.hasScrollback ? 24 * this._cols : 0;
   }
 
   public get isCursorInViewport(): boolean {
@@ -154,8 +169,11 @@ export class Buffer extends Disposable implements IBuffer {
     if (this.lines.length === 0) {
       fillAttr ??= DEFAULT_ATTR_DATA;
       let i = this._rows;
+      const normalBuffer = this._hasScrollback;
       while (i--) {
-        this.lines.push(this.getBlankLine(fillAttr));
+        const line = this.getBlankLine(fillAttr,
+          normalBuffer ? new LogicalLine(0) : undefined);
+        this.lines.push(line);
       }
     }
   }

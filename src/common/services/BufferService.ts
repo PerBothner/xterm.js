@@ -6,6 +6,7 @@
 import { Disposable } from '../Lifecycle';
 import { IAttributeData, IBuffer, IBufferLine, IBufferSet } from '../buffer/Types';
 import { BufferSet } from '../buffer/BufferSet';
+import { Buffer } from '../buffer/Buffer';
 import { IBufferService, ILogService, IOptionsService, type IBufferResizeEvent } from './Services';
 import { Emitter } from '../Event';
 import { BufferLine, LogicalLine } from '../buffer/BufferLine';
@@ -67,13 +68,23 @@ export class BufferService extends Disposable implements IBufferService {
    * @param isWrapped Whether the new line is wrapped from the previous line.
    */
   public scroll(eraseAttr: IAttributeData, isWrapped: boolean = false): void {
-    const buffer = this.buffer;
+    const buffer = this.buffer as Buffer;
     const topRow = buffer.ybase + buffer.scrollTop;
     const bottomRow = buffer.ybase + buffer.scrollBottom;
+    if (bottomRow !== buffer.lines.length - 1) {
+      buffer.setWrapped(bottomRow + 1, false);
+    }
     const oldLine = buffer.lines.get(bottomRow) as BufferLine;
-    let lline: LogicalLine;
+    let lline: LogicalLine = oldLine.logical();
+    const dbuffer = lline._data;
     if (isWrapped) {
-      lline = oldLine.logical();
+    } else if (buffer.allocateBigBlock() > 0) {
+      // In this case we try to use a large block for many lines.
+      // Grab the rest of the block
+      const newStart = lline._dataStart + 3 * lline.length;
+      const newLength = lline._dataLength - 3 * lline.length;
+      lline._dataLength = lline.length;
+      lline = new LogicalLine(0, dbuffer, newStart, newLength);
     } else {
       lline = new LogicalLine(this.cols);
     }

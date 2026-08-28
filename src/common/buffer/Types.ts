@@ -127,11 +127,15 @@ export interface IBufferLine {
   loadCell(index: number, cell: ICellData): ICellData;
   setCell(index: number, cell: ICellData): void;
   setCellFromCodepoint(index: number, codePoint: number, width: number, attrs: IAttributeData): void;
+  setCellsFromCodepoints(index: number, cols: number, codePoints: Uint32Array, start: number, end: number, attrs: IAttributeData): void;
   addCodepointToCell(index: number, codePoint: number, width: number): void;
   insertCells(pos: number, n: number, ch: ICellData): void;
   deleteCells(pos: number, n: number, fill: ICellData): void;
   replaceCells(start: number, end: number, fill: ICellData, respectProtect?: boolean): void;
   resize(cols: number, fill: ICellData): boolean;
+  /**
+   * @deprecated
+   */
   cleanupMemory(): number;
   fill(fillCellData: ICellData, respectProtect?: boolean): void;
   copyFrom(line: IBufferLine): void;

@@ -15,6 +15,7 @@ import { BufferLine, DEFAULT_ATTR_DATA } from './buffer/BufferLine';
 import { IParsingState, IEscapeSequenceParser, IParams, IFunctionIdentifier } from './parser/Types';
 import { NULL_CELL_CODE, NULL_CELL_WIDTH, Attributes, FgFlags, BgFlags, Content, UnderlineStyle } from './buffer/Constants';
 import { CellData } from './buffer/CellData';
+import { Buffer } from './buffer/Buffer';
 import { AttributeData } from './buffer/AttributeData';
 import { ICoreService, IBufferService, IOptionsService, ILogService, IMouseStateService, ICharsetService, IUnicodeService, LogLevelEnum, IOscLinkService } from './services/Services';
 import { UnicodeService } from './services/UnicodeService';
@@ -526,8 +527,9 @@ export class InputHandler extends Disposable implements IInputHandler {
     const cols = this._bufferService.cols;
     const wraparoundMode = this._coreService.decPrivateModes.wraparound;
     const insertMode = this._coreService.modes.insertMode;
+    const buffer = this._activeBuffer as Buffer;
     const curAttr = this._curAttrData;
-    let bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y) as BufferLine;
+    let bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y);
 
     // Defensive check: bufferRow can be undefined if a resize occurred mid-write due to async
     // scheduling gaps in WriteBuffer. See https://github.com/xtermjs/xterm.js/issues/5597
@@ -604,7 +606,8 @@ export class InputHandler extends Disposable implements IInputHandler {
             bufferRow.setCellFromCodepoint(cols - 1, NULL_CELL_CODE, NULL_CELL_WIDTH, curAttr);
           }
         }
-        bufferRow.setCellsFromCodepoints(this._activeBuffer.x - pendingCols, pendingCols, data, pendingStart, pos, curAttr);
+        const blockSize = buffer.allocateBigBlock();
+        bufferRow.setCellsFromCodepoints(this._activeBuffer.x - pendingCols, pendingCols, data, pendingStart, pos, curAttr, blockSize);
         pendingStart = -1;
         pendingCols = 0;
       }
@@ -635,7 +638,7 @@ export class InputHandler extends Disposable implements IInputHandler {
             this._activeBuffer.setWrapped(this._activeBuffer.ybase + this._activeBuffer.y, true);
           }
           // row changed, get it again
-          bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y) as BufferLine
+          bufferRow = this._activeBuffer.lines.get(this._activeBuffer.ybase + this._activeBuffer.y);
           if (!bufferRow) {
             return;
           }
