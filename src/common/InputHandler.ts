@@ -545,6 +545,7 @@ export class InputHandler extends Disposable implements IInputHandler {
     }
 
     let precedingJoinState = this._parser.precedingJoinState;
+    const linkId = this._getCurrentLinkId();
     let pendingStart = -1;
     let pendingCols = 0;
     for (let pos = start; ; ++pos) {
@@ -583,10 +584,6 @@ export class InputHandler extends Disposable implements IInputHandler {
         if (screenReaderMode) {
           this._onA11yChar.fire(stringFromCodePoint(code));
         }
-        const linkId = this._getCurrentLinkId();
-        if (linkId) {
-          this._oscLinkService.addLineToLink(linkId, this._activeBuffer.ybase + this._activeBuffer.y);
-        }
         overflowing = this._activeBuffer.x + chWidth - oldWidth > cols;
       } else {
         oldWidth = 0;
@@ -595,6 +592,10 @@ export class InputHandler extends Disposable implements IInputHandler {
         shouldJoin = false;
       }
       if (pendingStart >= 0 && (code < 0 || overflowing || shouldJoin)) {
+        if (linkId) {
+          this._oscLinkService.addLineToLink(linkId, this._activeBuffer.ybase + this._activeBuffer.y);
+        }
+
         // insert mode: move characters to right
         if (insertMode) {
           // right shift cells according to the width

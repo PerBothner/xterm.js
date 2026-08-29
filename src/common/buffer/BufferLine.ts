@@ -98,6 +98,11 @@ export class LogicalLine implements ILogicalLine {
     this._dataStart = start;
     this._dataLength = dlength;
   }
+  public setData(data: Uint32Array, start: number, dlength: number): void {
+    this._data = data;
+    this._dataStart = start;
+    this._dataLength = dlength;
+  }
 
   /**
    * @internal
@@ -388,6 +393,12 @@ export class BufferLine implements IBufferLine {
   constructor(cols: number,
     logicalLine = new LogicalLine(cols)
   ) {
+    this._logicalLine = logicalLine;
+    this.length = cols;
+    logicalLine.firstBufferLine ??= this;
+  }
+  public reinit(cols: number,
+    logicalLine: LogicalLine): void {
     this._logicalLine = logicalLine;
     this.length = cols;
     logicalLine.firstBufferLine ??= this;

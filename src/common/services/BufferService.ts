@@ -88,6 +88,11 @@ export class BufferService extends Disposable implements IBufferService {
     } else {
       lline = new LogicalLine(this.cols);
     }
+
+    // A possible optimizaton when willBufferBeTrimmed is to use
+    // CircularList.recycle instead of creating new BufferLine/LogicalLine
+    // instances - but it seems to be slightly slower as well as
+    // more complicated. May be worth investigating why it is slower.
     const newLine = buffer.getBlankLine(eraseAttr, lline) as BufferLine;
     if (isWrapped && oldLine) {
       oldLine.nextBufferLine = newLine;
