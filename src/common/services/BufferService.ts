@@ -71,12 +71,18 @@ export class BufferService extends Disposable implements IBufferService {
     const buffer = this.buffer as Buffer;
     const topRow = buffer.ybase + buffer.scrollTop;
     const bottomRow = buffer.ybase + buffer.scrollBottom;
-    if (bottomRow !== buffer.lines.length - 1) {
+    const atBottom = bottomRow === buffer.lines.length - 1;
+    if (!atBottom) {
       buffer.setWrapped(bottomRow + 1, false);
     }
     const oldLine = buffer.lines.get(bottomRow) as BufferLine;
+    // Determine whether the buffer is going to be trimmed after insertion.
+    const willBufferBeTrimmed = buffer.lines.isFull;
+
     let lline: LogicalLine = oldLine.logical();
     const dbuffer = lline._data;
+    const recycledLine = buffer.scrollTop === 0 && atBottom && willBufferBeTrimmed
+      && buffer.lines.recycle() as BufferLine;
     if (isWrapped) {
     } else if (buffer.allocateBigBlock() > 0) {
       // In this case we try to use a large block for many lines.
@@ -84,16 +90,19 @@ export class BufferService extends Disposable implements IBufferService {
       const newStart = lline._dataStart + 3 * lline.length;
       const newLength = lline._dataLength - 3 * lline.length;
       lline._dataLength = lline.length;
+      // Perhaps should also re-use recycledLine.logical().
+      // However, that seems to be slightly slower - unclear why.
       lline = new LogicalLine(0, dbuffer, newStart, newLength);
     } else {
       lline = new LogicalLine(this.cols);
     }
-
-    // A possible optimizaton when willBufferBeTrimmed is to use
-    // CircularList.recycle instead of creating new BufferLine/LogicalLine
-    // instances - but it seems to be slightly slower as well as
-    // more complicated. May be worth investigating why it is slower.
-    const newLine = buffer.getBlankLine(eraseAttr, lline) as BufferLine;
+    let newLine;
+    if (recycledLine) {
+      recycledLine.reinit(this.cols, lline);
+      newLine = recycledLine;
+    } else {
+      newLine = buffer.getBlankLine(eraseAttr, lline) as BufferLine;
+    }
     if (isWrapped && oldLine) {
       oldLine.nextBufferLine = newLine;
       newLine.startColumn = lline.length;
@@ -101,12 +110,11 @@ export class BufferService extends Disposable implements IBufferService {
     lline.backgroundColor = eraseAttr.bg;
 
     if (buffer.scrollTop === 0) {
-      // Determine whether the buffer is going to be trimmed after insertion.
-      const willBufferBeTrimmed = buffer.lines.isFull;
-
       // Insert the line using the fastest method
-      if (bottomRow === buffer.lines.length - 1) {
-        buffer.lines.push(newLine);
+      if (atBottom) {
+        if (!willBufferBeTrimmed) {
+          buffer.lines.push(newLine);
+        }
       } else {
         buffer.lines.splice(bottomRow + 1, 0, newLine);
       }

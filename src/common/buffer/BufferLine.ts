@@ -402,6 +402,9 @@ export class BufferLine implements IBufferLine {
     this._logicalLine = logicalLine;
     this.length = cols;
     logicalLine.firstBufferLine ??= this;
+    this._cacheValid = false;
+    this._cache = '';
+    this.startColumn = 0;
   }
 
   public get isWrapped(): boolean {
