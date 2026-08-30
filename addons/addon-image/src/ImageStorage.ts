@@ -535,9 +535,6 @@ export class ImageStorage implements IDisposable {
         old.tileId = tileId;
         return;
       }
-      // found a plain ExtendedAttrs instance
-      workCell.extended.payload = new ImageTileInfo(imageId, tileId);
-      return;
     }
     // fall-through: always create new ExtendedAttrs entry
     const extattr = workCell.extended.clone();
