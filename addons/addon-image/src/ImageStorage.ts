@@ -346,52 +346,44 @@ export class ImageStorage implements IDisposable {
     const placeholderCalls: { col: number, row: number, count: number }[] = [];
 
     // walk all cells in viewport and collect tiles found
-    // Note: We check extended directly (not just HAS_EXTENDED flag)
-    // because text writes clear the BG flag but leave image tile data intact.
-    // This lets top-layer images survive text overwrites (kitty C=1 behavior).
     for (let row = start; row <= end; ++row) {
       const line = buffer.lines.get(row + buffer.ydisp);
       if (!line) return;
-      const workCell = this._workCell;
       for (let col = 0; col < cols; ++col) {
-        line.loadCell(col, workCell);
-        const e = workCell.hasExtendedAttrs() && workCell.extended.payload;
-        if (!(e instanceof ImageTileInfo)) {
-          continue;
-        }
-        const imageId = e.imageId;
-        if (imageId === undefined || imageId === -1) {
-          continue;
-        }
-        const imgSpec = this._images.get(imageId);
-        if (e.tileId !== -1) {
-          const startTile = e.tileId;
-          const startCol = col;
-          let count = 1;
-          /**
-           * merge tiles to the right into a single draw call, if:
-           * - not at end of line
-           * - cell has same image id
-           * - cell has consecutive tile id
-           * Also check _extendedAttrs directly for cells where text cleared HAS_EXTENDED.
-           */
-          while (++col < cols) {
-            line.loadCell(col, workCell);
-            const nextE = workCell.hasExtendedAttrs() && workCell.extended.payload;
-            if (!(nextE instanceof ImageTileInfo) || !nextE || nextE.imageId !== imageId || nextE.tileId !== startTile + count) {
-              break;
-            }
-            count++;
+        const e = line.getExtended(col)?.payload;
+        if (e instanceof ImageTileInfo) {
+          const imageId = e.imageId;
+          if (imageId === undefined || imageId === -1) {
+            continue;
           }
-          col--;
-          if (imgSpec) {
-            if (imgSpec.actual) {
-              drawCalls.push({ imgSpec, tileId: startTile, col: startCol, row, count });
+          const imgSpec = this._images.get(imageId);
+          if (e.tileId !== -1) {
+            const startTile = e.tileId;
+            const startCol = col;
+            let count = 1;
+            /**
+             * merge tiles to the right into a single draw call, if:
+             * - not at end of line
+             * - cell has same image id
+             * - cell has consecutive tile id
+             */
+            while (++col < cols) {
+              const nextE = line.getExtended(col)?.payload;
+              if (!(nextE instanceof ImageTileInfo) || nextE.imageId !== imageId || nextE.tileId !== startTile + count) {
+                break;
+              }
+              count++;
             }
-          } else if (this._opts.showPlaceholder) {
-            placeholderCalls.push({ col: startCol, row, count });
+            col--;
+            if (imgSpec) {
+              if (imgSpec.actual) {
+                drawCalls.push({ imgSpec, tileId: startTile, col: startCol, row, count });
+              }
+            } else if (this._opts.showPlaceholder) {
+              placeholderCalls.push({ col: startCol, row, count });
+            }
+            this._fullyCleared = false;
           }
-          this._fullyCleared = false;
         }
       }
     }
@@ -428,15 +420,10 @@ export class ImageStorage implements IDisposable {
     const buffer = this._terminal._core.buffer;
     const rows = buffer.lines.length;
     const oldCol = this._viewportMetrics.cols - 1;
-    const workCell = this._workCell;
     for (let row = 0; row < rows; ++row) {
       const line = buffer.lines.get(row)!;
-      line.loadCell(oldCol, workCell);
-      if (workCell.hasExtendedAttrs()) {
-        const e = workCell.extended.payload;
-        if (!(e instanceof ImageTileInfo)) {
-          continue;
-        }
+      const e = line.getExtended(oldCol)?.payload;
+      if (e instanceof ImageTileInfo) {
         const imageId = e.imageId;
         if (imageId === undefined || imageId === -1) {
           continue;
@@ -480,8 +467,8 @@ export class ImageStorage implements IDisposable {
   public getImageAtBufferCell(x: number, y: number): HTMLCanvasElement | undefined {
     const buffer = this._terminal._core.buffer;
     const line = buffer.lines.get(y);
-    if (line && line.loadCell(x, this._workCell).hasExtendedAttrs()) {
-      const e = this._workCell.extended.payload;
+    if (line) {
+      const e = line.getExtended(x)?.payload;
       if (e instanceof ImageTileInfo && e.imageId && e.imageId !== -1) {
         const orig = this._images.get(e.imageId)?.orig;
         if (window.ImageBitmap && orig instanceof ImageBitmap) {
@@ -500,8 +487,8 @@ export class ImageStorage implements IDisposable {
   public extractTileAtBufferCell(x: number, y: number): HTMLCanvasElement | undefined {
     const buffer = this._terminal._core.buffer;
     const line = buffer.lines.get(y);
-    if (line && line.loadCell(x, this._workCell).hasExtendedAttrs()) {
-      const e = this._workCell.extended.payload;
+    if (line) {
+      const e = line.getExtended(x)?.payload;
       if (e instanceof ImageTileInfo && e.imageId && e.imageId !== -1 && e.tileId !== -1) {
         const spec = this._images.get(e.imageId);
         if (spec) {
@@ -552,7 +539,7 @@ export class ImageStorage implements IDisposable {
       workCell.extended.payload = new ImageTileInfo(imageId, tileId);
       return;
     }
-    // fall-through: always create new ExtendedAttrsImage entry
+    // fall-through: always create new ExtendedAttrs entry
     const extattr = workCell.extended.clone();
     extattr.payload = new ImageTileInfo(imageId, tileId);
     workCell.extended = extattr;
@@ -574,16 +561,12 @@ export class ImageStorage implements IDisposable {
       if (!line) {
         continue;
       }
-      const workCell = this._workCell;
       for (let x = 0; x < this._terminal.cols; ++x) {
-        line.loadCell(x, workCell);
-        if (workCell.hasExtendedAttrs()) {
-          const payload = workCell.extended.payload;
-          if (payload instanceof ImageTileInfo) {
-            const spec = this._images.get(payload.imageId);
-            if (spec) {
-              spec.tileCount++;
-            }
+        const payload = line.getExtended(x)?.payload;
+        if (payload instanceof ImageTileInfo) {
+          const spec = this._images.get(payload.imageId);
+          if (spec) {
+            spec.tileCount++;
           }
         }
       }
