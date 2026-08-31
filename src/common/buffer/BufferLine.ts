@@ -102,6 +102,9 @@ export class LogicalLine implements ILogicalLine {
     this._data = data;
     this._dataStart = start;
     this._dataLength = dlength;
+    this.length = 0;
+    this._combined = {};
+    this._extendedAttrs = {};
   }
 
   /**
@@ -158,19 +161,23 @@ export class LogicalLine implements ILogicalLine {
     } else {
       cell.combinedData = '';
     }
-    if (cell.bg & BgFlags.HAS_EXTENDED) {
-      cell.extended = this._extendedAttrs[index]!;
-    } else {
-      // Do not mutate cell.extended in place: it may still reference this line's map entry from a
-      // prior loadCell into a reused CellData (e.g. $workCell during insert/delete).
-      cell.extended = DEFAULT_ATTR_DATA.extended.clone();
-      // We use $extended as blueprint and reset the internals
-      // mimicking the ctor to avoid a new allocation.
-      $extended._ext = 0;
-      $extended._urlId = 0;
-      cell.extended = $extended;
-    }
+    cell.extended = this.getExtended(index);
     return cell;
+  }
+
+  public getExtended(index: LogicalColumn, validEnd: LogicalColumn = this.length): IExtendedAttrs {
+    const startIndex = this._dataStart + index * Constants.CELL_INDICIES;
+    if (this._data[startIndex + Cell.BG] & BgFlags.HAS_EXTENDED) {
+      return this._extendedAttrs[index]!;
+    }
+    // Do not mutate cell.extended in place: it may still reference this line's map entry from a
+    // prior loadCell into a reused CellData (e.g. $workCell during insert/delete).
+    // We use $extended as blueprint and reset the internals
+    // mimicking the ctor to avoid a new allocation.
+    $extended._ext = 0;
+    $extended._urlId = 0;
+    $extended.payload = undefined;
+    return $extended;
   }
 
   /** Returns the string content of the cell. */
@@ -559,7 +566,14 @@ export class BufferLine implements IBufferLine {
         cell.bg = lline.backgroundColor;
       }
       return cell;
-    }   return lline.loadCell(lcolumn, cell);
+    }
+    return lline.loadCell(lcolumn, cell);
+  }
+
+  public getExtended(index: number): IExtendedAttrs {
+    const lline = this._logicalLine;
+    const lcolumn = index + this.startColumn;
+    return lline.getExtended(lcolumn, this.validEnd);
   }
 
   /**
