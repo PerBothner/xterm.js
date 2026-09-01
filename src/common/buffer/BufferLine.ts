@@ -228,9 +228,10 @@ export class LogicalLine implements ILogicalLine {
     if (attrs.bg & BgFlags.HAS_EXTENDED) {
       this._extendedAttrs[index] = attrs.extended;
     }
-    this._data[index * Constants.CELL_INDICIES + Cell.CONTENT] = codePoint | (width << Content.WIDTH_SHIFT);
-    this._data[index * Constants.CELL_INDICIES + Cell.FG] = attrs.fg;
-    this._data[index * Constants.CELL_INDICIES + Cell.BG] = attrs.bg;
+    const j = this._dataStart + index * Constants.CELL_INDICIES;
+    this._data[j + Cell.CONTENT] = codePoint | (width << Content.WIDTH_SHIFT);
+    this._data[j + Cell.FG] = attrs.fg;
+    this._data[j + Cell.BG] = attrs.bg;
   }
 
   public setCellsFromCodepoints(index: LogicalColumn, cols: number, codePoints: Uint32Array, start: number, end: number, attrs: IAttributeData, allocateBigBlock: number = 0): void {
