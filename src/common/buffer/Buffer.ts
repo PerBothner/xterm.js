@@ -11,7 +11,7 @@ import { ExtendedAttrs } from './AttributeData';
 import { BufferLine, LogicalLine, DEFAULT_ATTR_DATA } from './BufferLine';
 import { reflowLine, reflowLargerApplyNewLayout, reflowLargerCreateNewLayout, reflowLargerGetLinesToRemove } from './BufferReflow';
 import { CellData } from './CellData';
-import { NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR, WHITESPACE_CELL_CODE, WHITESPACE_CELL_WIDTH } from './Constants';
+import { NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR, WHITESPACE_CELL_CODE, WHITESPACE_CELL_WIDTH, Attributes } from './Constants';
 import { Marker } from './Marker';
 import { DEFAULT_CHARSET } from '../data/Charsets';
 import { IBufferService, ILogService, IOptionsService } from '../services/Services';
@@ -106,7 +106,7 @@ export class Buffer extends Disposable implements IBuffer {
     attr: IAttributeData,
     logicalLine: LogicalLine = new LogicalLine(this._cols)
   ): IBufferLine {
-    logicalLine.backgroundColor = attr.bg & ~0xFC000000;
+    logicalLine.backgroundColor = attr.bg & Attributes.COLOR_MASK;
     return new BufferLine(this._cols, logicalLine);
   }
 

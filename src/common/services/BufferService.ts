@@ -7,6 +7,7 @@ import { Disposable } from '../Lifecycle';
 import { IAttributeData, IBuffer, IBufferLine, IBufferSet } from '../buffer/Types';
 import { BufferSet } from '../buffer/BufferSet';
 import { Buffer } from '../buffer/Buffer';
+import { Attributes } from '../buffer/Constants';
 import { IBufferService, ILogService, IOptionsService, type IBufferResizeEvent } from './Services';
 import { Emitter } from '../Event';
 import { BufferLine, LogicalLine } from '../buffer/BufferLine';
@@ -107,7 +108,7 @@ export class BufferService extends Disposable implements IBufferService {
       oldLine.nextBufferLine = newLine;
       newLine.startColumn = lline.length;
     }
-    lline.backgroundColor = eraseAttr.bg;
+    lline.backgroundColor = eraseAttr.bg & Attributes.COLOR_MASK;
 
     if (buffer.scrollTop === 0) {
       // Insert the line using the fastest method
