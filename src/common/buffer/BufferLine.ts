@@ -161,23 +161,27 @@ export class LogicalLine implements ILogicalLine {
     } else {
       cell.combinedData = '';
     }
-    cell.extended = this.getExtended(index);
+    if (cell.bg & BgFlags.HAS_EXTENDED) {
+      cell.extended = this._extendedAttrs[index]!;
+    } else {
+      // Do not mutate cell.extended in place: it may still reference this line's map entry from a
+      // prior loadCell into a reused CellData (e.g. $workCell during insert/dele
+      // We use $extended as blueprint and reset the internals
+      // mimicking the ctor to avoid a new allocation.
+      $extended._ext = 0;
+      $extended._urlId = 0;
+      $extended.payload = undefined;
+      cell.extended = $extended;
+    }
+
     return cell;
   }
 
-  public getExtended(index: LogicalColumn, validEnd: LogicalColumn = this.length): IExtendedAttrs {
-    const startIndex = this._dataStart + index * Constants.CELL_INDICIES;
-    if (this._data[startIndex + Cell.BG] & BgFlags.HAS_EXTENDED) {
-      return this._extendedAttrs[index]!;
-    }
-    // Do not mutate cell.extended in place: it may still reference this line's map entry from a
-    // prior loadCell into a reused CellData (e.g. $workCell during insert/delete).
-    // We use $extended as blueprint and reset the internals
-    // mimicking the ctor to avoid a new allocation.
-    $extended._ext = 0;
-    $extended._urlId = 0;
-    $extended.payload = undefined;
-    return $extended;
+  public getExtended(index: LogicalColumn, validEnd: LogicalColumn = this.length): IExtendedAttrs | undefined {
+    return index < this.length
+      && (this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.BG] & BgFlags.HAS_EXTENDED)
+      ? this._extendedAttrs[index]
+      : undefined;
   }
 
   /** Returns the string content of the cell. */
@@ -571,7 +575,7 @@ export class BufferLine implements IBufferLine {
     return lline.loadCell(lcolumn, cell);
   }
 
-  public getExtended(index: number): IExtendedAttrs {
+  public getExtended(index: number): IExtendedAttrs | undefined {
     const lline = this._logicalLine;
     const lcolumn = index + this.startColumn;
     return lline.getExtended(lcolumn, this.validEnd);

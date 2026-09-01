@@ -153,7 +153,7 @@ export interface IBufferLine {
   getCodePoint(index: number): number;
   isCombined(index: number): number;
   getString(index: number): string;
-  getExtended(index: number): IExtendedAttrs;
+  getExtended(index: number): IExtendedAttrs | undefined;
 }
 
 export interface IMarker extends IDisposable {
