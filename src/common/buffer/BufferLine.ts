@@ -220,12 +220,12 @@ export class LogicalLine implements ILogicalLine {
     }
     if (index >= this.length) {
       this.resizeData(index + 1);
-      let j = this._dataStart + index * Constants.CELL_INDICIES;
+      let j = this._dataStart + this.length * Constants.CELL_INDICIES;
       for (let i = this.length; i < index; i++) {
-        const j = this._dataStart + i * Constants.CELL_INDICIES;
         this._data[j + Cell.CONTENT] = NULL_CELL_WIDTH << Content.WIDTH_SHIFT;
         this._data[j + Cell.FG] = 0;
         this._data[j + Cell.BG] = this.backgroundColor;
+        j += Constants.CELL_INDICIES;
       }
       this.length = index + 1;
     }
