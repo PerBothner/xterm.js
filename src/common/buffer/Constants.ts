@@ -90,6 +90,11 @@ export const enum Content {
 
 export const enum Attributes {
   /**
+   * Color is encoded using 26 bits. If those, the high-order 2 bits is the
+   * color mode, which specifies how to interpret the remaining 24 bits.
+   */
+  COLOR_MASK = 0x3FFFFFF, /* CM_MASK | RGB_MASK */
+  /**
    * bit 1..8     blue in RGB, color in P256 and P16
    */
   BLUE_MASK = 0xFF,

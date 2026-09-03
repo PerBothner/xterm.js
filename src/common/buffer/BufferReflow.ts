@@ -30,7 +30,7 @@ export function reflowLine(wrappedLines: BufferLine[], newCols: number): BufferL
       newLine = wrappedLines[curRow];
       newLine.length = newCols;
     } else {
-      newLine = new BufferLine(curLine._stringCache, newCols, logical);
+      newLine = new BufferLine(newCols, logical);
       newLines.push(newLine);
     }
     curRow++;

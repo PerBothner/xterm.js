@@ -24,7 +24,12 @@ export class CellData extends AttributeData implements ICellData {
   public fg = 0;
   public bg = 0;
   public extended: IExtendedAttrs = new ExtendedAttrs();
-  public combinedData = '';
+  public _string: string  = '';
+  public _stringStart: number = 0;
+  public _stringEnd: number = -1; // Whole string
+  public get combinedData(): string {
+    return this.isCombined() ? this.getChars() : '';
+  }
   /** Whether cell contains a combined string. */
   public isCombined(): number {
     return this.content & Content.IS_COMBINED_MASK;
@@ -35,13 +40,21 @@ export class CellData extends AttributeData implements ICellData {
   }
   /** JS string of the content. */
   public getChars(): string {
-    if (this.content & Content.IS_COMBINED_MASK) {
-      return this.combinedData;
-    }
-    if (this.content & Content.CODEPOINT_MASK) {
-      return stringFromCodePoint(this.content & Content.CODEPOINT_MASK);
+    if (this.content & (Content.CODEPOINT_MASK|Content.IS_COMBINED_MASK)) {
+      let str = this._string;
+      if (this._stringEnd >= 0) {
+        str = str.substring(this._stringStart, this._stringEnd);
+        this._string = str;
+        this._stringEnd = -1;
+      }
+      return str;
     }
     return '';
+  }
+  public _setChars(str: string, strStart: number = 0, strEnd: number = -1): void {
+    this._string = str;
+    this._stringStart = strStart;
+    this._stringEnd = strEnd;
   }
   /**
    * Codepoint of cell
@@ -50,10 +63,10 @@ export class CellData extends AttributeData implements ICellData {
    * of the last char in string to be in line with code in CharData.
    */
   public getCode(): number {
-    return (this.isCombined())
-      ? this.combinedData.charCodeAt(this.combinedData.length - 1)
-      : this.content & Content.CODEPOINT_MASK;
+    return !this.isCombined() ? this.content & Content.CODEPOINT_MASK
+      : this._string.charCodeAt(this._stringEnd < 0 ? this._string.length -1 : this._stringEnd - 1);
   }
+
   /** Set data from CharData */
   public setFromCharData(value: CharData): void {
     this.fg = value[CHAR_DATA_ATTR_INDEX];
@@ -84,7 +97,9 @@ export class CellData extends AttributeData implements ICellData {
       this.content = value[CHAR_DATA_CHAR_INDEX].charCodeAt(0) | (value[CHAR_DATA_WIDTH_INDEX] << Content.WIDTH_SHIFT);
     }
     if (combined) {
-      this.combinedData = value[CHAR_DATA_CHAR_INDEX];
+      this._string = value[CHAR_DATA_CHAR_INDEX];
+      this._stringStart = -1;
+      this._stringEnd = -1;
       this.content = Content.IS_COMBINED_MASK | (value[CHAR_DATA_WIDTH_INDEX] << Content.WIDTH_SHIFT);
     }
   }
