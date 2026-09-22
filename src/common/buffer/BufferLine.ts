@@ -5,7 +5,7 @@
 
 import { CharData, IAttributeData, IBufferLine, ILogicalLine, ICellData, IExtendedAttrs } from './Types';
 import { AttributeData } from './AttributeData';
-import { CellData } from './CellData';
+import { CellData, encodeRange } from './CellData';
 import { Attributes, BgFlags, Content, NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR } from './Constants';
 import { stringFromCodePoint } from '../input/TextDecoder';
 
@@ -172,18 +172,9 @@ export class LogicalLine implements ILogicalLine {
       return cell;
     }
     const startIndex = this._dataStart + index * Constants.CELL_INDICIES;
-    let content = this._data[startIndex + Cell.CONTENT];
-    if (content & Content.STORED_IN_CHARS_MASK) {
-      const start = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
-      const length = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
-      (cell as CellData)._setChars(this._chars, start, start + length);
-      if (!(content & Content.IS_COMBINED_MASK)) {
-        content &= ~(Content.STORED_IN_CHARS_MASK|Content.CODEPOINT_MASK);
-        content |= (length > 0 && this._chars.codePointAt(start)) || 0;
-      }
-    } else {
-      (cell as CellData)._setChars('', -1, -1);
-    }
+    const content = this._data[startIndex + Cell.CONTENT];
+    (cell as CellData)._string = content & Content.STORED_IN_CHARS_MASK
+      ? this._chars : '';
     cell.content = content;
     cell.fg = this._data[startIndex + Cell.FG];
     cell.bg = this._data[startIndex + Cell.BG];
@@ -265,22 +256,33 @@ export class LogicalLine implements ILogicalLine {
     return this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.BG] & BgFlags.PROTECTED;
   }
 
-  public static _withRange(content: number, start: number, length: number): number {
-    content &= ~(Content.START_IN_CHARS_MASK | Content.LENGTH_IN_CHARS_MASK);
-    content |= (start << Content.START_IN_CHARS_SHIFT) | (length << Content.LENGTH_IN_CHARS_SHIFT) | Content.STORED_IN_CHARS_MASK;
-    return content;
-  }
-
   public setCell(index: LogicalColumn, cell: ICellData): void {
-    const content = cell.content & (Content.CODEPOINT_MASK|Content.IS_COMBINED_MASK);
-    this.setCellFromCodepoint(index, content, cell.getWidth(), cell);
+    let content = cell.content;
+    const width = cell.getWidth();
+    if (content & Content.STORED_IN_CHARS_MASK) {
+      this.setCellFromCodepoint(index, 1, width, cell);
+      if (cell instanceof CellData && cell._string === this._chars) {
+        // re-use content as-is.
+      } else if (cell.content & Content.IS_COMBINED_MASK) {
+        const str = cell.getChars();
+        content = encodeRange(content, 0, str.length);
+      } else {
+        content = cell.getCode() | (width << Content.WIDTH_SHIFT);
+      }
+      this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT] = content;
+      return;
+    }
+    content = content & (Content.CODEPOINT_MASK|Content.IS_COMBINED_MASK);
+    this.setCellFromCodepoint(index, content, width, cell);
+    /*
     if (cell.content & Content.IS_COMBINED_MASK) {
       const str = cell.combinedData;
       const start = this._chars.length;
       const length = str.length;
       this._chars += str;
-      this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT] = LogicalLine._withRange(cell.content, start, length);
+      this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT] = encodeRange(cell.content, start, length);
     }
+    */
   }
 
   /**
@@ -398,7 +400,7 @@ export class LogicalLine implements ILogicalLine {
         // append at end - can reuse old combined data.
         // Preserve value of _charsIsTextValue
         this._chars += addedStr;
-        this._data[dindex + Cell.CONTENT] = LogicalLine._withRange(content, oldStart, oldLength + addedLength);
+        this._data[dindex + Cell.CONTENT] = encodeRange(content, oldStart, oldLength + addedLength);
         return;
       }
       oldCellStr = this._chars.substring(oldStart, oldStart + oldLength);
@@ -407,7 +409,7 @@ export class LogicalLine implements ILogicalLine {
     }
     this._charsIsTextValue = false;
     this._chars += oldCellStr + addedStr;
-    this._data[dindex + Cell.CONTENT] = LogicalLine._withRange(content, oldStrLen, oldCellStr.length + addedLength);
+    this._data[dindex + Cell.CONTENT] = encodeRange(content, oldStrLen, oldCellStr.length + addedLength);
   }
 
   /**
@@ -509,7 +511,7 @@ export class LogicalLine implements ILogicalLine {
         let cstr = this.getString(i);
         let clen = cstr.length;
         const content = this._data[j];
-        this._data[j] = LogicalLine._withRange(content, nchars, clen);
+        this._data[j] = encodeRange(content, nchars, clen);
         if (clen === 0 && (content >> Content.WIDTH_SHIFT) > 0) {
           cstr = ' ';
           clen = 1;
