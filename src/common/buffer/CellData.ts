@@ -21,11 +21,6 @@ export class CellData extends AttributeData implements ICellData {
   }
   /** Primitives from terminal buffer. */
   public content = 0;
-  /*
-  public get content(): number { return this._content;}
-  public set content(v: number) {
-    this._content = v; }
-    */
   public fg = 0;
   public bg = 0;
   public extended: IExtendedAttrs = new ExtendedAttrs();
