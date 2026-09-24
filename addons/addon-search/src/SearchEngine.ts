@@ -269,7 +269,7 @@ export class SearchEngine {
     }
     let cache = this._lineCache.getLineFromCache(row);
     if (!cache) {
-      cache = this._lineCache.translateBufferLineToStringWithWrap(row, true);
+      cache = this._lineCache.translateBufferLineToStringWithWrap(row);
       this._lineCache.setLineInCache(row, cache);
     }
     const [stringLine, offsets] = cache;
