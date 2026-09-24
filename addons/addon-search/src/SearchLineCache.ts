@@ -104,7 +104,6 @@ export class SearchLineCache extends Disposable {
    * function is useful for getting the actual text underneath the raw selection
    * position.
    * @param lineIndex The index of the line being translated.
-   * @param trimRight Whether to trim whitespace to the right.
    */
   public translateBufferLineToStringWithWrap(lineIndex: number): LineCacheEntry {
     const strings = [];
