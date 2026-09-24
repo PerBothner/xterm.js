@@ -83,16 +83,17 @@ export class CellData extends AttributeData implements ICellData {
     this.fg = value[CHAR_DATA_ATTR_INDEX];
     this.bg = 0;
     let combined = false;
+    const str = value[CHAR_DATA_CHAR_INDEX];
     // surrogates and combined strings need special treatment
-    if (value[CHAR_DATA_CHAR_INDEX].length > 2) {
+    if (str.length > 2) {
       combined = true;
     }
-    else if (value[CHAR_DATA_CHAR_INDEX].length === 2) {
-      const code = value[CHAR_DATA_CHAR_INDEX].charCodeAt(0);
+    else if (str.length === 2) {
+      const code = str.charCodeAt(0);
       // if the 2-char string is a surrogate create single codepoint
       // everything else is combined
       if (0xD800 <= code && code <= 0xDBFF) {
-        const second = value[CHAR_DATA_CHAR_INDEX].charCodeAt(1);
+        const second = str.charCodeAt(1);
         if (0xDC00 <= second && second <= 0xDFFF) {
           this.content = ((code - 0xD800) * 0x400 + second - 0xDC00 + 0x10000) | (value[CHAR_DATA_WIDTH_INDEX] << Content.WIDTH_SHIFT);
         }
@@ -105,10 +106,9 @@ export class CellData extends AttributeData implements ICellData {
       }
     }
     else {
-      this.content = value[CHAR_DATA_CHAR_INDEX].charCodeAt(0) | (value[CHAR_DATA_WIDTH_INDEX] << Content.WIDTH_SHIFT);
+      this.content = str.charCodeAt(0) | (value[CHAR_DATA_WIDTH_INDEX] << Content.WIDTH_SHIFT);
     }
     if (combined) {
-      const str = value[CHAR_DATA_CHAR_INDEX]
       this._string = str;
       this.content = encodeRange(Content.IS_COMBINED_MASK | (value[CHAR_DATA_WIDTH_INDEX] << Content.WIDTH_SHIFT),
         0, str.length);

@@ -198,9 +198,9 @@ describe('BufferLine', function(): void {
     assert.equal(line.length, 10);
     assert.deepEqual(line.loadCell(0, new CellData()).getAsCharData(), [0, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE]);
     assert.equal(line.isWrapped, true);
-    line = new TestBufferLine(10, createCellData(123, 'a', 456), true);
+    line = new TestBufferLine(10, createCellData(123, 'a', 1), true);
     assert.equal(line.length, 10);
-    assert.deepEqual(line.loadCell(0, new CellData()).getAsCharData(), [123, 'a', 456, 'a'.charCodeAt(0)]);
+    assert.deepEqual(line.loadCell(0, new CellData()).getAsCharData(), [123, 'a', 1, 'a'.charCodeAt(0)]);
     assert.equal(line.isWrapped, true);
   });
   it('insertCells', function(): void {
@@ -661,7 +661,7 @@ describe('BufferLine', function(): void {
       line.setCell(1, cell);
 
       // same eAttr, different codepoint
-      cell.content = 65;  // 'A'
+      cell.content = 65 | 1 << Content.WIDTH_SHIFT;  // 'A'
       line.setCell(2, cell);
 
       // different eAttr

@@ -135,14 +135,15 @@ export class LogicalLine implements ILogicalLine {
   }
 
   public showContents(): string {
-    let result = '';
+    let result = '[';
     for (let i = 0; i < this.length; i++) {
       if (i > 0) { result += '; '; }
       result += `#${i}:`;
       result += this._data[i * Constants.CELL_INDICIES + this._dataStart].toString(16);
       const s = this.getString(i);
-      if (s.length > 0) { result += `=${JSON.stringify(s)}`}
+      if (s.length > 0) { result += `=${JSON.stringify(s)}`; }
     }
+    result += ']len:'+this.length;
     return result;
   }
 
@@ -245,10 +246,9 @@ export class LogicalLine implements ILogicalLine {
       return true;
     }
     const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
-    return (content & Content.WIDTH_MASK) > 0
-      && ((content & Content.STORED_IN_CHARS_MASK)
-        ? (content & Content.LENGTH_IN_CHARS_MASK) === 0
-        : (content & Content.CODEPOINT_MASK) === 0);
+    return ((content & Content.STORED_IN_CHARS_MASK)
+      ? (content & Content.LENGTH_IN_CHARS_MASK) === 0
+      : (content & Content.CODEPOINT_MASK) === 0);
   }
 
   /** Get state of protected flag. */
@@ -263,9 +263,10 @@ export class LogicalLine implements ILogicalLine {
       this.setCellFromCodepoint(index, 1, width, cell);
       if (cell instanceof CellData && cell._string === this._chars) {
         // re-use content as-is.
-      } else if (cell.content & Content.IS_COMBINED_MASK) {
+      } else if (content & Content.IS_COMBINED_MASK) {
         const str = cell.getChars();
-        content = encodeRange(content, 0, str.length);
+        content = encodeRange(content, this._chars.length, str.length);
+        this._chars += str;
       } else {
         content = cell.getCode() | (width << Content.WIDTH_SHIFT);
       }
@@ -274,15 +275,6 @@ export class LogicalLine implements ILogicalLine {
     }
     content = content & (Content.CODEPOINT_MASK|Content.IS_COMBINED_MASK);
     this.setCellFromCodepoint(index, content, width, cell);
-    /*
-    if (cell.content & Content.IS_COMBINED_MASK) {
-      const str = cell.combinedData;
-      const start = this._chars.length;
-      const length = str.length;
-      this._chars += str;
-      this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT] = encodeRange(cell.content, start, length);
-    }
-    */
   }
 
   /**
@@ -314,16 +306,19 @@ export class LogicalLine implements ILogicalLine {
       }
       return;
     }
-    if (index >= this.length && !isNull) {
-      this.resizeData(index + 1);
+    if (index + width > this.length && !isNull) {
+      this.resizeData(index + width);
       let j = this._dataStart + this.length * Constants.CELL_INDICIES;
-      for (let i = this.length; i < index; i++) {
+      // If wide, we need to clean index+1 in addition.  We don't need
+      // to clear index (as it get overwritten) but this is simple.
+      const lastToClear = width <= 1 ? index - 1 : index + 1;
+      for (let i = this.length; i <= lastToClear; i++) {
         this._data[j + Cell.CONTENT] = NULL_CELL_WIDTH << Content.WIDTH_SHIFT;
         this._data[j + Cell.FG] = 0;
         this._data[j + Cell.BG] = this.backgroundColor;
         j += Constants.CELL_INDICIES;
       }
-      this.length = index + 1;
+      this.length = index + width;
     }
     if (attrs.bg & BgFlags.HAS_EXTENDED) {
       this._extendedAttrs[index] = attrs.extended;
@@ -507,18 +502,22 @@ export class LogicalLine implements ILogicalLine {
       const llen = this.length;
       let nchars = 0;
       let j = this._dataStart + Cell.CONTENT;
+      let prevWasWide = false;
       for (let i = 0; i < llen; i++) {
-        let cstr = this.getString(i);
+        const cstr = this.getString(i);
         let clen = cstr.length;
         const content = this._data[j];
         this._data[j] = encodeRange(content, nchars, clen);
-        if (clen === 0 && (content >> Content.WIDTH_SHIFT) > 0) {
-          cstr = ' ';
+        const width = content >> Content.WIDTH_SHIFT;
+        if (clen > 0) {
+          cellContents.push(cstr);
+        } else if (!prevWasWide) {
+          cellContents.push(' ');
           clen = 1;
         }
-        cellContents.push(cstr);
         j += Constants.CELL_INDICIES;
         nchars += clen;
+        prevWasWide = width > 1;
       }
       const result = cellContents.join('');
       this._charsIsTextValue = true;
@@ -951,26 +950,26 @@ export class BufferLine implements IBufferLine {
     this.length = line.length;
   }
 
-  public getTrimmedLength(noBg: boolean = false): number {
-    const logicalLine = this._logicalLine;
-    const startColumn = this.startColumn;
-    const data = logicalLine._data;
-    for (let i = this.validEnd; --i >= startColumn; ) {
-      const j = logicalLine._dataStart + i * Constants.CELL_INDICIES;
-      if (!logicalLine.isNullChar(i)
-      || (noBg && (data[j + Cell.BG] & Attributes.CM_MASK))) {
-        i += data[j + Cell.CONTENT] >> Content.WIDTH_SHIFT;
-        return i - startColumn;
-      }
-    }
-    return startColumn;
+  public getTrimmedLength(): number {
+    return this.validEnd - this.startColumn;
   }
 
   public getNoBgTrimmedLength(): number {
     if (this._logicalLine.backgroundColor) {
       return this.length;
     }
-    return this.getTrimmedLength(true);
+    const logicalLine = this._logicalLine;
+    const startColumn = this.startColumn;
+    const data = logicalLine._data;
+    for (let i = this.validEnd; --i >= startColumn; ) {
+      const j = logicalLine._dataStart + i * Constants.CELL_INDICIES;
+      if (!logicalLine.isNullChar(i)
+        || ((data[j + Cell.BG] & Attributes.CM_MASK))) {
+        i += data[j + Cell.CONTENT] >> Content.WIDTH_SHIFT;
+        return i - startColumn;
+      }
+    }
+    return startColumn;
   }
 
   public copyCellsFrom(src: BufferLine, srcCol: number, destCol: number, length: number, applyInReverse: boolean): void {
