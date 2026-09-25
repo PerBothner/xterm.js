@@ -3,7 +3,7 @@
  * @license MIT
  */
 
-import { CharData, IAttributeData, IBufferLine, ILogicalLine, ICellData, IExtendedAttrs } from './Types';
+import { CharData, IAttributeData, IBufferLine, ILogicalLine, ICellData, IExtendedAttrs, BufferColumn, LogicalColumn } from './Types';
 import { AttributeData } from './AttributeData';
 import { CellData } from './CellData';
 import { Attributes, BgFlags, Content, NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR } from './Constants';
@@ -21,20 +21,6 @@ const enum Constants {
   /** Factor when to cleanup underlying array buffer after shrinking. */
   CLEANUP_THRESHOLD = 2
 }
-
-/*
- * Column count within current visible BufferLine(row).
- * The left-most column is column 0.
- */
-export type BufferColumn = number;
-
-/*
- * Column count within current LogicalLine.
- * If the display is 80 columns wide, then LineColumn of the left-most
- * character of the first wrapped line would normally be 80.
- * (It might be 79 if the character at column 79 is double-width.)
- */
-export type LogicalColumn = number;
 
 /**
  * Cell member indices.
