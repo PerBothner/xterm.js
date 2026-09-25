@@ -482,7 +482,7 @@ export class LogicalLine implements ILogicalLine {
   }
    */
 
-  public getTrimmedString(startCol: LogicalColumn = 0, endCol: LogicalColumn = -1): string {
+  public asString(startCol: LogicalColumn = 0, endCol: LogicalColumn = -1): string {
     if (!this._charsIsTextValue) {
       const cellContents: string[] = [];
       const llen = this.length;
@@ -1104,7 +1104,7 @@ export class BufferLine implements IBufferLine {
       validEnd = this._logicalLine.length;
     }
     validEnd = Math.min(endCol, validEnd);
-    let result = lline.getTrimmedString(startCol, validEnd);
+    let result = lline.asString(startCol, validEnd);
     const paddingNeeded = trimRight ? 0 : Math.max(0, endCol - validEnd);
     if (paddingNeeded) {
       result += WHITESPACE_CELL_CHAR.repeat(paddingNeeded);
