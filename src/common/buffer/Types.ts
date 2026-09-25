@@ -14,6 +14,20 @@ export type BufferIndex = [number, number];
 
 export type CharData = [attr: number, char: string, width: number, code: number];
 
+/*
+ * Column count within current visible BufferLine(row).
+ * The left-most column is column 0.
+ */
+export type BufferColumn = number;
+
+/*
+ * Column count within current LogicalLine.
+ * If the display is 80 columns wide, then LineColumn of the left-most
+ * character of the first wrapped line would normally be 80.
+ * (It might be 79 if the character at column 79 is double-width.)
+ */
+export type LogicalColumn = number;
+
 export interface IExtendedAttrs {
   ext: number;
   underlineStyle: UnderlineStyle;
