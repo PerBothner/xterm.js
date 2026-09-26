@@ -733,6 +733,21 @@ export class BufferLine implements IBufferLine {
     return lline.loadCell(lcolumn, cell);
   }
 
+  /**
+   * Convenience wrapper around loadCell, used by public API.
+   */
+  public getCell(x: number, cell?: ICellData): ICellData | undefined {
+    if (x < 0 || x >= this.length) {
+      return undefined;
+    }
+
+    if (cell) {
+      this.loadCell(x, cell);
+      return cell;
+    }
+    return this.loadCell(x, new CellData());
+  }
+
   public getExtended(index: number): IExtendedAttrs | undefined {
     const lline = this._logicalLine;
     const lcolumn = index + this.startColumn;
