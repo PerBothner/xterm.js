@@ -206,11 +206,11 @@ export class LogicalLine implements ILogicalLine {
     return '';
   }
 
-/**
-  * Get codepoint of the cell.
-  * To be in line with `code` in CharData this either returns
-  * a single UTF32 codepoint or the last codepoint of a combined string.
-  */
+  /**
+   * Get codepoint of the cell.
+   * To be in line with `code` in CharData this either returns
+   * a single UTF32 codepoint or the last codepoint of a combined string.
+   */
   public getCodePoint(index: LogicalColumn): number {
     const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
     if (content & Content.STORED_IN_CHARS_MASK) {
@@ -522,6 +522,15 @@ export class LogicalLine implements ILogicalLine {
       return this._chars.substring(start, lastStart + lastLength);
     }
     return this._chars;
+  }
+
+  public offsetInString(index: LogicalColumn): number {
+    if (!this._charsIsTextValue) { this.asString(); }
+    if (index >= this.length) {
+      return this._chars.length;
+    }
+    const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
+    return (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
   }
 }
 

@@ -6,6 +6,8 @@
 import type { Terminal } from '@xterm/xterm';
 import type { ISearchOptions } from '@xterm/addon-search';
 import type { SearchLineCache } from './SearchLineCache';
+import { CellData } from 'common/buffer/CellData';
+import type { ITerminal } from 'browser/Types';
 
 /**
  * Represents the position to start a search from.
@@ -45,7 +47,10 @@ export class SearchEngine {
   constructor(
     private readonly _terminal: Terminal,
     private readonly _lineCache: SearchLineCache
-  ) {}
+  ) {
+    this._core = (this._terminal as any)._core;
+  }
+  private _core: ITerminal;
 
   /**
    * Find the first occurrence of a term starting from a specific position.
@@ -254,7 +259,7 @@ export class SearchEngine {
     let col = searchPosition.startCol;
 
     // Ignore wrapped lines, only consider on unwrapped line (first row of command string).
-    let firstLine = this._terminal.buffer.active.getLine(row);
+    let firstLine = this._core.buffer.lines.get(row);
     if (firstLine?.isWrapped) {
       if (isReverseSearch) {
         searchPosition.startCol += this._terminal.cols;
@@ -266,7 +271,7 @@ export class SearchEngine {
       do {
         row--;
         col += this._terminal.cols;
-        firstLine = this._terminal.buffer.active.getLine(row);
+        firstLine = this._core.buffer.lines.get(row);
       } while (firstLine?.isWrapped);
       searchPosition.startRow = row;
       searchPosition.startCol = col;
@@ -281,6 +286,7 @@ export class SearchEngine {
     const offset = this._bufferColsToStringOffset(row, col);
     let searchTerm = term;
     let searchStringLine = stringLine;
+    // const stringLine = firstLine?.logical().asString();
     if (!searchOptions.regex) {
       searchTerm = searchOptions.caseSensitive ? term : term.toLowerCase();
       searchStringLine = searchOptions.caseSensitive ? stringLine : stringLine.toLowerCase();
@@ -345,12 +351,13 @@ export class SearchEngine {
   }
 
   private _stringLengthToBufferSize(row: number, offset: number): number {
-    const line = this._terminal.buffer.active.getLine(row);
+    const line = this._core.buffer.lines.get(row);
     if (!line) {
       return 0;
     }
+    const cell = new CellData();
     for (let i = 0; i < offset; i++) {
-      const cell = line.getCell(i);
+      line.loadCell(i, cell);
       if (!cell) {
         break;
       }
@@ -359,38 +366,14 @@ export class SearchEngine {
       if (char.length > 1) {
         offset -= char.length - 1;
       }
-      // Adjust the searchIndex for empty characters following wide unicode
-      // chars (eg. CJK)
-      const nextCell = line.getCell(i + 1);
-      if (nextCell && nextCell.getWidth() === 0) {
-        offset++;
-      }
+      const width = cell.getWidth();
+      if (width > 1) { offset += width - 1; }
     }
     return offset;
   }
 
   private _bufferColsToStringOffset(startRow: number, cols: number): number {
-    let lineIndex = startRow;
-    let offset = 0;
-    let line = this._terminal.buffer.active.getLine(lineIndex);
-    while (cols > 0 && line) {
-      for (let i = 0; i < cols && i < this._terminal.cols; i++) {
-        const cell = line.getCell(i);
-        if (!cell) {
-          break;
-        }
-        if (cell.getWidth()) {
-          // Treat null characters as whitespace to align with the translateToString API
-          offset += cell.getCode() === 0 ? 1 : cell.getChars().length;
-        }
-      }
-      lineIndex++;
-      line = this._terminal.buffer.active.getLine(lineIndex);
-      if (line && !line.isWrapped) {
-        break;
-      }
-      cols -= this._terminal.cols;
-    }
-    return offset;
+    const line = this._core.buffer.lines.get(startRow)!;
+    return line ? line.logical().offsetInString(cols) : 0;
   }
 }

@@ -129,6 +129,8 @@ export interface ICellData extends IAttributeData {
 }
 
 export interface ILogicalLine {
+  asString(startCol?: LogicalColumn, endCol?: LogicalColumn): string;
+  offsetInString(index: LogicalColumn): number;
 }
 
 /**
