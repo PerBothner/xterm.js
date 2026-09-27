@@ -48,7 +48,7 @@ test.describe('SerializeAddon', () => {
         const lines = [];
         for (let i = 0; i < buffer.length; i++) {
           // Do this intentionally to get content of underlining source
-          const bufferLine = buffer.getLine(i)._line;
+          const bufferLine = buffer.getLine(i);
           if (bufferLine.isWrapped) {
             lines.push({ startColumn: bufferLine.startColumn, length: bufferLine.length});
           } else {
@@ -60,7 +60,7 @@ test.describe('SerializeAddon', () => {
               if (key === '_data') {
                 return new Uint32Array(value.buffer, 0, logical.length * 3);
               }
-              return value;
+              return value
             }));
           }
         }
