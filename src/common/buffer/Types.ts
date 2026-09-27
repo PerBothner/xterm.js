@@ -129,6 +129,7 @@ export interface ICellData extends IAttributeData {
 }
 
 export interface ILogicalLine {
+  forEachBufferLine(callback: (line: IBufferLine) => void): void;
   asString(startCol?: LogicalColumn, endCol?: LogicalColumn): string;
   offsetInString(index: LogicalColumn): number;
 }
@@ -138,6 +139,7 @@ export interface ILogicalLine {
  */
 export interface IBufferLine {
   length: number;
+  startColumn: number;
   logical(): ILogicalLine;
   get isWrapped(): boolean;
   get(index: number): CharData;

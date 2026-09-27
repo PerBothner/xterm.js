@@ -99,6 +99,11 @@ export class LogicalLine implements ILogicalLine {
     this.length = 0;
     this._extendedAttrs = {};
   }
+  public forEachBufferLine(callback: (line: IBufferLine) => void): void {
+    for (let line = this.firstBufferLine; line; line = line.nextBufferLine) {
+      callback(line);
+    }
+  }
 
   /**
    * @internal
