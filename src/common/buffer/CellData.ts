@@ -69,7 +69,7 @@ export class CellData extends AttributeData implements ICellData {
     if (content & Content.STORED_IN_CHARS_MASK) {
       const start = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
       const length = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
-      const code = this._string.charCodeAt(start + length - 1);
+      const code = length ? this._string.charCodeAt(start + length - 1) : 0;
       return !code ? 0
         : code < 0xDC000 || code > 0xDFFF || length < 2 ? code
           : this._string.codePointAt(start + length - 2) || code;
