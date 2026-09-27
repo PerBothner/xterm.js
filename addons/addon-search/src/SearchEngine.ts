@@ -5,7 +5,6 @@
 
 import type { Terminal } from '@xterm/xterm';
 import type { ISearchOptions } from '@xterm/addon-search';
-import type { SearchLineCache } from './SearchLineCache';
 import { CellData } from 'common/buffer/CellData';
 import type { ITerminal } from 'browser/Types';
 
@@ -45,8 +44,7 @@ const enum Constants {
  */
 export class SearchEngine {
   constructor(
-    private readonly _terminal: Terminal,
-    private readonly _lineCache: SearchLineCache
+    private readonly _terminal: Terminal
   ) {
     this._core = (this._terminal as any)._core;
   }
@@ -68,8 +66,6 @@ export class SearchEngine {
     if (startCol >= this._terminal.cols) {
       throw new Error(`Invalid col: ${startCol} to search in terminal of ${this._terminal.cols} cols`);
     }
-
-    this._lineCache.initLinesCache();
 
     const searchPosition: ISearchPosition = {
       startRow,
@@ -119,8 +115,6 @@ export class SearchEngine {
         startRow = prevSelectedPos.start.y;
       }
     }
-
-    this._lineCache.initLinesCache();
 
     const searchPosition: ISearchPosition = {
       startRow,
@@ -182,7 +176,6 @@ export class SearchEngine {
     const startCol = this._terminal.cols;
     const isReverseSearch = true;
 
-    this._lineCache.initLinesCache();
     const searchPosition: ISearchPosition = {
       startRow,
       startCol
@@ -276,17 +269,12 @@ export class SearchEngine {
       searchPosition.startRow = row;
       searchPosition.startCol = col;
     }
-    let cache = this._lineCache.getLineFromCache(row);
-    if (!cache) {
-      cache = this._lineCache.translateBufferLineToStringWithWrap(row);
-      this._lineCache.setLineInCache(row, cache);
-    }
-    const [stringLine, offsets] = cache;
+    const logical = firstLine?.logical();
+    const stringLine = logical ? logical.asString() : '';
 
     const offset = this._bufferColsToStringOffset(row, col);
     let searchTerm = term;
     let searchStringLine = stringLine;
-    // const stringLine = firstLine?.logical().asString();
     if (!searchOptions.regex) {
       searchTerm = searchOptions.caseSensitive ? term : term.toLowerCase();
       searchStringLine = searchOptions.caseSensitive ? stringLine : stringLine.toLowerCase();
@@ -324,6 +312,10 @@ export class SearchEngine {
       if (searchOptions.wholeWord && !this._isWholeWord(resultIndex, searchStringLine, term)) {
         return;
       }
+      const offsets: number[] = [];
+      logical?.forEachBufferLine((line) => {
+        offsets.push(logical.offsetInString(line.startColumn));
+      });
 
       // Adjust the row number and search index if needed since a "line" of text can span multiple
       // rows
