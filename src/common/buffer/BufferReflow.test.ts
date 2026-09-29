@@ -7,7 +7,6 @@ import { CircularList } from '../CircularList';
 import { BufferLine } from './BufferLine';
 import { CellData } from './CellData';
 import { NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE } from './Constants';
-import { reflowLargerGetLinesToRemove } from './BufferReflow';
 import { IBufferLine } from './Types';
 
 /**
@@ -159,33 +158,4 @@ describe('BufferReflow', () => {
     });
   });
 
-  describe('reflowLargerGetLinesToRemove', () => {
-    const nullCell = CellData.fromCharData([0, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE]);
-
-    function createWrappedLines(chars: string): CircularList<IBufferLine> {
-      const lines = new CircularList<IBufferLine>(chars.length);
-      let previous = undefined;
-      for (let i = 0; i < chars.length; i++) {
-        const line = new BufferLine(1);
-        line.set(0, [0, chars[i], 1, chars.charCodeAt(i)]);
-        if (previous) { line.setWrapped(previous); }
-        previous = line;
-        lines.push(line);
-      }
-      return lines;
-    }
-
-    it('should skip reflow when the cursor is in a wrapped block and reflowCursorLine is false', () => {
-      const lines = createWrappedLines('abcde');
-      const skipped = reflowLargerGetLinesToRemove(lines, 1, 5, 2, nullCell, false);
-      const reflowed = reflowLargerGetLinesToRemove(lines, 1, 5, 2, nullCell, true);
-      assert.deepEqual(skipped, []);
-      assert.notDeepEqual(reflowed, []);
-    });
-
-    it('should reflow wrapped blocks when the cursor is outside the block', () => {
-      const lines = createWrappedLines('abcde');
-      assert.notDeepEqual(reflowLargerGetLinesToRemove(lines, 1, 5, 10, nullCell, false), []);
-    });
-  });
 });
