@@ -806,6 +806,10 @@ export class BufferLine implements IBufferLine {
       this.setCellFromCodepoint(pos - 1, 0, 1, fillCellData);
       this.setCellFromCodepoint(pos, 0, 1, fillCellData);
     }
+    // handle fullwidth at line end: reset last cell if it is first cell of a wide char
+    if (this.getWidth(this.length - n - 1) === 2) {
+      this.setCellFromCodepoint(this.length - n - 1, 0, 1, fillCellData);
+    }
     if (n < this.length - pos) {
       for (let i = this.length - pos - n - 1; i >= 0; --i) {
         this.setCell(pos + n + i, this.loadCell(pos + i, $workCell));
@@ -817,11 +821,6 @@ export class BufferLine implements IBufferLine {
       for (let i = pos; i < this.length; ++i) {
         this.setCell(i, fillCellData);
       }
-    }
-
-    // handle fullwidth at line end: reset last cell if it is first cell of a wide char
-    if (this.getWidth(this.length - 1) === 2) {
-      this.setCellFromCodepoint(this.length - 1, 0, 1, fillCellData);
     }
   }
 
