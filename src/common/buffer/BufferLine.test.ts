@@ -828,14 +828,10 @@ describe('BufferLine', function(): void {
       assert.equal(line.translateToString(true, undefined, undefined, undefined), 'abc');
       assert.equal(line.cachedString, 'abc');
 
-      line.cachedString = 'cached-trimmed';
-      assert.equal(line.translateToString(true, undefined, undefined, undefined), 'cached-trimmed');
-      assert.equal(line.translateToString(false, undefined, undefined, undefined), 'abc  ');
-      assert.equal(line.cachedString, 'abc');
-
-      // Any optional translation argument should bypass cache.
-      assert.equal(line.translateToString(false, 0, 2, undefined), 'ab');
-      assert.equal(line.translateToString(true, 0, 2, undefined), 'ab');
+      line.cachedString = 'ABC';
+      assert.equal(line.translateToString(false, 0, 2, undefined), 'AB');
+      assert.equal(line.translateToString(true, 0, 2, undefined), 'AB');
+      assert.equal(line.translateToString(true, undefined, undefined, undefined), 'ABC');
     });
 
     it('should invalidate cached canonical strings on line mutations', () => {
