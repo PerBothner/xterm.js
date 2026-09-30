@@ -230,7 +230,7 @@ export class LogicalLine implements ILogicalLine {
 
   /**
    * A null character diplays like space, but is trimmable.
-   * Specifically it has a zero codepoint, but a width of 1.
+   * Specifically it has a zero codepoint, and does not follow a wide char.
    */
   public isNullChar(index: LogicalColumn): boolean {
     if (index >= this.length) {
@@ -239,7 +239,8 @@ export class LogicalLine implements ILogicalLine {
     const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
     return ((content & Content.STORED_IN_CHARS_MASK)
       ? (content & Content.LENGTH_IN_CHARS_MASK) === 0
-      : (content & Content.CODEPOINT_MASK) === 0);
+      : (content & Content.CODEPOINT_MASK) === 0)
+      && (index === 0 || this.getWidth(index - 1) < 2);
   }
 
   /** Get state of protected flag. */
