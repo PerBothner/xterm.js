@@ -651,6 +651,8 @@ describe('Buffer', () => {
         // 汉语汉语汉语
         assert.equal(buffer.lines.get(0)!.translateToString(true), '汉语汉语汉语');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '汉语汉语汉语');
+        assert.equal(buffer.lines.get(0)!.logical().asString(), '汉语汉语汉语汉语汉语汉语');
+        assert.equal(buffer.lines.get(1)!.startColumn, 12);
         buffer.resize(13, 10);
         assert.equal(buffer.ybase, 0);
         assert.equal(buffer.lines.length, 10);
@@ -658,11 +660,15 @@ describe('Buffer', () => {
         assert.equal(buffer.lines.get(0)!.translateToString(false), '汉语汉语汉语 ');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '汉语汉语汉语');
         assert.equal(buffer.lines.get(1)!.translateToString(false), '汉语汉语汉语 ');
+        assert.equal(buffer.lines.get(0)!.logical().asString(), '汉语汉语汉语汉语汉语汉语');
+        assert.equal(buffer.lines.get(1)!.startColumn, 12);
         buffer.resize(14, 10);
         assert.equal(buffer.lines.get(0)!.translateToString(true), '汉语汉语汉语汉');
         assert.equal(buffer.lines.get(0)!.translateToString(false), '汉语汉语汉语汉');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '语汉语汉语');
         assert.equal(buffer.lines.get(1)!.translateToString(false), '语汉语汉语    ');
+        assert.equal(buffer.lines.get(0)!.logical().asString(), '汉语汉语汉语汉语汉语汉语');
+        assert.equal(buffer.lines.get(1)!.startColumn, 14);
       });
       it('should correctly reflow wrapped lines that end in 0 space (via tab char)', () => {
         buffer.fillViewportRows();
@@ -712,20 +718,32 @@ describe('Buffer', () => {
         // 汉语汉语汉语
         assert.equal(buffer.lines.get(0)!.translateToString(true), '汉语汉语汉语');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '汉语汉语汉语');
+        assert.equal(buffer.lines.get(0)!.logical().asString(), '汉语汉语汉语汉语汉语汉语');
+        assert.deepEqual([0, 1, 2, 3].map((i) => buffer.lines.get(i)!.startColumn),
+          [0, 12, 0, 0]);
         buffer.resize(11, 10);
         assert.equal(buffer.ybase, 0);
         assert.equal(buffer.lines.length, 10);
         assert.equal(buffer.lines.get(0)!.translateToString(true), '汉语汉语汉');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '语汉语汉语');
         assert.equal(buffer.lines.get(2)!.translateToString(true), '汉语');
+        assert.equal(buffer.lines.get(0)!.logical().asString(), '汉语汉语汉语汉语汉语汉语');
+        assert.deepEqual([0, 1, 2, 3].map((i) => buffer.lines.get(i)!.startColumn),
+          [0, 10, 20, 0]);
         buffer.resize(10, 10);
         assert.equal(buffer.lines.get(0)!.translateToString(true), '汉语汉语汉');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '语汉语汉语');
         assert.equal(buffer.lines.get(2)!.translateToString(true), '汉语');
+        assert.equal(buffer.lines.get(0)!.logical().asString(), '汉语汉语汉语汉语汉语汉语');
+        assert.deepEqual([0, 1, 2, 3].map((i) => buffer.lines.get(i)!.startColumn),
+          [0, 10, 20, 0]);
         buffer.resize(9, 10);
         assert.equal(buffer.lines.get(0)!.translateToString(true), '汉语汉语');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '汉语汉语');
         assert.equal(buffer.lines.get(2)!.translateToString(true), '汉语汉语');
+        assert.equal(buffer.lines.get(0)!.logical().asString(), '汉语汉语汉语汉语汉语汉语');
+        assert.deepEqual([0, 1, 2, 3].map((i) => buffer.lines.get(i)!.startColumn),
+          [0, 8, 16, 0]);
         buffer.resize(8, 10);
         assert.equal(buffer.lines.get(0)!.translateToString(true), '汉语汉语');
         assert.equal(buffer.lines.get(1)!.translateToString(true), '汉语汉语');

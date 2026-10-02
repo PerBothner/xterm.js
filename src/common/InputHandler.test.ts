@@ -1867,6 +1867,8 @@ describe('InputHandler', () => {
         await inputHandler.parseP('\x1b[?45h');
         await inputHandler.parseP('￥￥￥');
         assert.deepEqual(getLines(bufferService, 2), ['￥￥', '￥']);
+        assert.equal(bufferService.buffer.lines.get(0)?.logical().asString(), '￥￥￥');
+        assert.equal(bufferService.buffer.lines.get(1)?.startColumn, 4);
         await inputHandler.parseP(ttyBS);
         assert.deepEqual(getLines(bufferService, 2), ['￥￥', '  ']);
         assert.equal(bufferService.buffer.x, 1);
