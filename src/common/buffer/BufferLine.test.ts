@@ -2,13 +2,13 @@
  * Copyright (c) 2018 The xterm.js authors. All rights reserved.
  * @license MIT
  */
-import { NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE, DEFAULT_ATTR, Content, UnderlineStyle, BgFlags, Attributes, FgFlags } from './Constants';
+import { NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE, Content, UnderlineStyle, BgFlags, Attributes, FgFlags } from './Constants';
 import { BufferLine, LogicalLine } from './BufferLine';
 import { CellData } from './CellData';
 import { CharData, IBufferLine, ICellData } from './Types';
 import { assert } from 'chai';
 import { AttributeData } from './AttributeData';
-import { createCellData, NULL_CELL_DATA, extendedAttributes } from '../TestUtils.test';
+import { createCellData, NULL_CELL_DATA, DEFAULT_ATTR, extendedAttributes } from '../TestUtils.test';
 
 
 class TestBufferLine extends BufferLine {
