@@ -1048,25 +1048,6 @@ export class BufferLine implements IBufferLine {
       newData[i3 + Cell.BG] = logicalLine.backgroundColor;
     }
     logicalLine.copyCellsFrom(oldLogical, 0, column, oldLogical.length, false);
-    /*
-    const oldData = oldLogical._data;
-    for (let i = 0; i < oldLogical.length; i++) {
-      const oldIndex = i * Constants.CELL_INDICIES;
-      const newIndex = (column + i) * Constants.CELL_INDICIES
-      const content = oldData[oldIndex + Cell.CONTENT];
-      const fg = oldData[oldIndex + Cell.FG];
-      const bg = oldData[oldIndex + Cell.BG];
-      newData[newIndex + Cell.CONTENT] = content;
-      newData[newIndex + Cell.FG] = fg;
-      newData[newIndex + Cell.BG] = bg;
-      if (content & Content.IS_COMBINED_MASK) {
-        lprevious._combined[column + i] = oldLogical._combined[i];
-      }
-      if (bg & BgFlags.HAS_EXTENDED) {
-        lprevious._extendedAttrs[column + i] = oldLogical._extendedAttrs[i];
-      }
-    }
-    */
     logicalLine.length = column + oldLogical.length;
     previousLine.nextBufferLine = this;
     for (let line: BufferLine | undefined = this; line; line = line.nextBufferLine) {

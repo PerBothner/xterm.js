@@ -681,7 +681,6 @@ export class InputHandler extends Disposable implements IInputHandler {
       data[pos] = code | (chWidth << Content.WIDTH_SHIFT);
       if (pendingStart < 0) pendingStart = pos;
       pendingCols += chWidth;
-      // bufferRow.setCellsFromCodepoints(this._activeBuffer.x, chWidth, data, pos, pos+1, curAttr);
       this._activeBuffer.x += chWidth;
     }
 
