@@ -482,7 +482,7 @@ describe('BufferLine', function(): void {
   describe('addCharToCell', () => {
     it('should set width to 1 for empty cell', () => {
       const line = new TestBufferLine(3, NULL_CELL_DATA, false);
-      line.addCodepointToCell(0, '\u0301'.charCodeAt(0), 0);
+      line.addCodepointToCell(0, '\u0301'.charCodeAt(0), 0, createCellData(DEFAULT_ATTR, '?', 1));
       const cell = line.loadCell(0, new CellData());
       // chars contains single combining char
       // width is set to 1

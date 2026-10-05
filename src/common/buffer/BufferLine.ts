@@ -367,36 +367,50 @@ export class LogicalLine implements ILogicalLine {
    * onto a leading char. Since we already set the attrs
    * by the previous `setDataFromCodePoint` call, we can omit it here.
    */
-  public addCodepointToCell(column: LogicalColumn, codePoint: number, width: number): void {
+  public addCodepointToCell(column: LogicalColumn, codePoint: number, width: number, attrs?: IAttributeData): void {
     const dindex = this._dataStart + column * Constants.CELL_INDICIES;
-    let content = this._data[dindex + Cell.CONTENT];
+    let content = column >= this.length ? 0 : this._data[dindex + Cell.CONTENT];
     const oldWidth = (content & Content.WIDTH_MASK) >> Content.WIDTH_SHIFT;
+    width = Math.max(width, 1);
     if (width > oldWidth) {
       content &= ~Content.WIDTH_MASK;
       content |= width << Content.WIDTH_SHIFT;
+      if (column + width > this.length) {
+        this.resizeData(column + width);
+        this.length = column + width;
+      }
     }
-    content |= Content.IS_COMBINED_MASK;
     const addedStr = stringFromCodePoint(codePoint);
     const addedLength = addedStr.length;
     let oldCellStr;
     const oldStrLen = this._chars.length;
-    if (content & Content.STORED_IN_CHARS_MASK) {
-      const oldStart = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
-      const oldLength = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
-      if (oldStart + oldLength === oldStrLen) {
-        // append at end - can reuse old combined data.
-        // Preserve value of _charsIsTextValue
-        this._chars += addedStr;
-        this._data[dindex + Cell.CONTENT] = encodeRange(content, oldStart, oldLength + addedLength);
-        return;
+    if (content & Content.HAS_CONTENT_MASK) {
+      content |= Content.IS_COMBINED_MASK;
+      if (content & Content.STORED_IN_CHARS_MASK) {
+        const oldStart = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
+        const oldLength = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
+        if (oldStart + oldLength === oldStrLen) {
+          // append at end - can reuse old combined data.
+          // Preserve value of _charsIsTextValue
+          this._chars += addedStr;
+          this._data[dindex + Cell.CONTENT] = encodeRange(content, oldStart, oldLength + addedLength);
+          return;
+        }
+        oldCellStr = this._chars.substring(oldStart, oldStart + oldLength);
+      } else {
+        oldCellStr = stringFromCodePoint(content & Content.CODEPOINT_MASK);
       }
-      oldCellStr = this._chars.substring(oldStart, oldStart + oldLength);
     } else {
-      oldCellStr = stringFromCodePoint(content & Content.CODEPOINT_MASK);
+      oldCellStr = '';
     }
     this._charsIsTextValue = false;
     this._chars += oldCellStr + addedStr;
     this._data[dindex + Cell.CONTENT] = encodeRange(content, oldStrLen, oldCellStr.length + addedLength);
+    if (attrs) {
+      this._data[dindex + Cell.FG] = attrs.fg;
+      this._data[dindex + Cell.BG] = attrs.bg;
+      if (attrs.bg & BgFlags.HAS_EXTENDED) { this._extendedAttrs[column] = attrs.extended; }
+    }
   }
 
   /**
@@ -787,16 +801,8 @@ export class BufferLine implements IBufferLine {
    * onto a leading char. Since we already set the attrs
    * by the previous `setDataFromCodePoint` call, we can omit it here.
    */
-  public addCodepointToCell(index: number, codePoint: number, width: number): void {
-    const lline = this._logicalLine;
-    const lcolumn = index + this.startColumn;
-    if (lcolumn >= this.validEnd) {
-      // should not happen - we actually have no data in the cell yet
-      // simply set the data in the cell buffer with a width of 1
-      this.setCellFromCodepoint(index, codePoint, 1, CellData.fromCharData([0, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE]));
-      return;
-    }
-    lline.addCodepointToCell(lcolumn, codePoint, width);
+  public addCodepointToCell(index: number, codePoint: number, width: number, attrs?: IAttributeData): void {
+    this._logicalLine.addCodepointToCell(index + this.startColumn, codePoint, width, attrs);
   }
 
   public insertCells(pos: number, n: number, fillCellData: ICellData): void {

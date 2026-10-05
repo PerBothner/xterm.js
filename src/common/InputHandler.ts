@@ -671,7 +671,7 @@ export class InputHandler extends Disposable implements IInputHandler {
         // it is save to step 2 cells back here
         // since an empty cell is only set by fullwidth chars
         bufferRow.addCodepointToCell(this._activeBuffer.x - offset,
-          code, chWidth);
+          code, chWidth, curAttr);
         for (let delta = chWidth - oldWidth; --delta >= 0;) {
           bufferRow.setCellFromCodepoint(this._activeBuffer.x++, 0, 0, curAttr);
         }

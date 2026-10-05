@@ -62,10 +62,11 @@ export const enum Content {
   /**
    * bit 1..22    mask to check whether a cell contains any string data
    *              we need to check for codepoint and isCombined bits to see
-   *              whether a cell contains anything
+   *              whether a cell contains anything.
+   *              We also check LENGTH_IN_CHARS_MASK in case STORED_IN_CHARS_MASK.
    *              read:   `isEmpty = !(content & Content.HAS_CONTENT_MASK)`
    */
-  HAS_CONTENT_MASK = 0x3FFFFF,
+  HAS_CONTENT_MASK = 0x0F3FFFFF,
 
   /**
    * bit 23..24   wcwidth value of cell, takes 2 bits (ranges from 0..2)
