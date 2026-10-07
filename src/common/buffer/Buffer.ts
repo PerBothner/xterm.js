@@ -391,7 +391,7 @@ export class Buffer extends Disposable implements IBuffer {
     return toRemove;
   }
 
-  /**
+  /**
    * Creates and return the new layout for lines given an array of indexes to be removed.
    * @param lines The buffer lines.
    * @param toRemove The indexes to remove.

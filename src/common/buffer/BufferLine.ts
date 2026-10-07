@@ -6,7 +6,7 @@
 import { CharData, IAttributeData, IBufferLine, ILogicalLine, ICellData, IExtendedAttrs, BufferColumn, LogicalColumn } from './Types';
 import { AttributeData } from './AttributeData';
 import { CellData, encodeRange } from './CellData';
-import { Attributes, BgFlags, Content, NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR } from './Constants';
+import { Attributes, BgFlags, Content, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR } from './Constants';
 import { stringFromCodePoint } from '../input/TextDecoder';
 
 // Buffer memory layout:
@@ -456,51 +456,6 @@ export class LogicalLine implements ILogicalLine {
       this.setCell(dstIndex, $workCell);
     }
   }
-
-  /* *
-   * Translates the buffer line to a string.
-   *
-   * @param startCol The column to start the string (0-based inclusive).
-   * @param endCol The column to end the string (0-based exclusive).
-   * @param dataLength ignore _data after dataLength
-   * @param outColumns if specified, this array will be filled with column numbers such that
-   * `returnedString[i]` is displayed at `outColumns[i]` column. `outColumns[returnedString.length]`
-   * is where the character following `returnedString` will be displayed.
-   *
-   * When a single cell is translated to multiple UTF-16 code units (e.g. surrogate pair) in the
-   * returned string, the corresponding entries in `outColumns` will have the same column number.
-   * /
-  public translateToString(startCol?: number, endCol?: number, dataLength: number = this.length, outColumns?: number[]): string {
-    startCol = startCol ?? 0;
-    endCol = endCol ?? this.length;
-    if (outColumns) {
-      outColumns.length = 0;
-    }
-    const cellContents: string[] = [];
-    while (startCol < endCol) {
-      const chars = this.getString(startCol);
-      / *
-      const content = startCol >= dataLength ? 0
-        : this._data[this._dataStart + startCol * Constants.CELL_INDICIES + Cell.CONTENT];
-      const cp = content & Content.CODEPOINT_MASK;
-      const chars = (content & Content.IS_COMBINED_MASK) ? this._combined[startCol] : (cp) ? stringFromCodePoint(cp) : WHITESPACE_CELL_CHAR;
-      cellContents.push(chars);
-      if (outColumns) {
-        for (let i = 0; i < chars.length; ++i) {
-          outColumns.push(startCol);
-        }
-      }
-      startCol++;
-      // startCol += (content >> Content.WIDTH_SHIFT) || 1; // always advance by at least 1
-       * /
-    }
-    if (outColumns) {
-      outColumns.push(startCol);
-    }
-    const result = cellContents.join('');
-    return result;
-  }
-   */
 
   public asString(startCol: LogicalColumn = 0, endCol: LogicalColumn = -1): string {
     if (!this._charsIsTextValue) {
