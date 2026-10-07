@@ -1119,7 +1119,7 @@ export class BufferLine implements IBufferLine {
     } else {
       validEnd = this._logicalLine.length;
     }
-    validEnd = Math.min(endCol, validEnd);
+    validEnd = Math.max(startCol, Math.min(endCol, validEnd));
     let result = lline.asString(startCol, validEnd);
     const paddingNeeded = trimRight ? 0 : Math.max(0, endCol - validEnd);
     if (paddingNeeded) {
