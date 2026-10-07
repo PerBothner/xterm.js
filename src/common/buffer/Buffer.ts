@@ -460,7 +460,7 @@ export class Buffer extends Disposable implements IBuffer {
     const logical = curLine.logical();
     for (;;) {
       const endCol = logical.charStart(startCol + newCols);
-      if (endCol >= logical.length) {
+      if (endCol >= logical.trimmedLength) {
         curLine.nextBufferLine = undefined;
         curLine.startColumn = startCol;
         break;

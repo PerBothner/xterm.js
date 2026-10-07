@@ -88,9 +88,9 @@ export class BufferService extends Disposable implements IBufferService {
     } else if (buffer.allocateBigBlock() > 0) {
       // In this case we try to use a large block for many lines.
       // Grab the rest of the block
-      const newStart = lline._dataStart + 3 * lline.length;
-      const newLength = lline._dataLength - 3 * lline.length;
-      lline._dataLength = lline.length;
+      const newStart = lline._dataStart + 3 * lline.trimmedLength;
+      const newLength = lline._dataLength - 3 * lline.trimmedLength;
+      lline._dataLength = lline.trimmedLength;
       // Perhaps should also re-use recycledLine.logical().
       // However, that seems to be slightly slower - unclear why.
       lline = new LogicalLine(0, dbuffer, newStart, newLength);
@@ -106,7 +106,7 @@ export class BufferService extends Disposable implements IBufferService {
     }
     if (isWrapped && oldLine) {
       oldLine.nextBufferLine = newLine;
-      newLine.startColumn = lline.length;
+      newLine.startColumn = lline.trimmedLength;
     }
     lline.backgroundColor = eraseAttr.bg & Attributes.COLOR_MASK;
 
