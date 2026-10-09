@@ -81,19 +81,21 @@ export class BufferService extends Disposable implements IBufferService {
     const willBufferBeTrimmed = buffer.lines.isFull;
 
     let lline: LogicalLine = oldLine.logical();
-    const dbuffer = lline._data;
     const recycledLine = buffer.scrollTop === 0 && atBottom && willBufferBeTrimmed
       && buffer.lines.recycle() as BufferLine;
     if (isWrapped) {
     } else if (buffer.allocateBigBlock() > 0) {
       // In this case we try to use a large block for many lines.
       // Grab the rest of the block
-      const newStart = lline._dataStart + 3 * lline.trimmedLength;
-      const newLength = lline._dataLength - 3 * lline.trimmedLength;
-      lline._dataLength = lline.trimmedLength;
+      const data = lline._data;
+      const dbuffer = data.buffer;
+      const newStart = data.byteOffset + 3 * 4 * lline.trimmedLength;
+      const newLength = data.length - 3 * lline.trimmedLength;
+      lline._data = new Uint32Array(dbuffer, data.byteOffset, 3 * lline.trimmedLength);
+      const nbuffer = new Uint32Array(dbuffer, newStart, newLength);
       // Perhaps should also re-use recycledLine.logical().
       // However, that seems to be slightly slower - unclear why.
-      lline = new LogicalLine(0, dbuffer, newStart, newLength);
+      lline = new LogicalLine(0, nbuffer);
     } else {
       lline = new LogicalLine(this.cols);
     }

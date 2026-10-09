@@ -61,8 +61,6 @@ export class LogicalLine implements ILogicalLine {
    * @internal
    */
   public _data: Uint32Array;
-  public _dataStart: number = 0;
-  public _dataLength: number = 0;
 
   /**
    * If charsIsTextValue is true: The text value of the line.
@@ -87,18 +85,10 @@ export class LogicalLine implements ILogicalLine {
   /** If _chars is the text value of this line. */
   public _charsIsTextValue: boolean = true;
 
-  constructor(cols: number = 0, data: Uint32Array = cols === 0 ? EMPTY_DATA : new Uint32Array(cols * Constants.CELL_INDICIES), start: number = 0, dlength: number = data.length - start) {
+  constructor(cols: number = 0, data: Uint32Array = cols === 0 ? EMPTY_DATA : new Uint32Array(cols * Constants.CELL_INDICIES)) {
     this._data = data;
-    this._dataStart = start;
-    this._dataLength = dlength;
   }
-  public setData(data: Uint32Array, start: number, dlength: number): void {
-    this._data = data;
-    this._dataStart = start;
-    this._dataLength = dlength;
-    this.trimmedLength = 0;
-    this._extendedAttrs = {};
-  }
+
   public forEachBufferLine(callback: (line: IBufferLine) => void): void {
     for (let line = this.firstBufferLine; line; line = line.nextBufferLine) {
       callback(line);
@@ -110,18 +100,16 @@ export class LogicalLine implements ILogicalLine {
    */
   public resizeData(cols: number, allocateBigBlock: number = 0): void {
     const uint32Cells = cols * Constants.CELL_INDICIES;
-    const oldLength = this._dataLength;
+    const oldLength = this._data.length;
     if (uint32Cells >= oldLength) {
       // increase by at least 50%
       const newLength = Math.max(uint32Cells + 60,
         allocateBigBlock ? allocateBigBlock * 3 : (3 * oldLength) >> 1);
       const data = new Uint32Array(newLength);
       for (let i = 3 * this.trimmedLength; --i >= 0; ) {
-        data[i] = this._data[this._dataStart + i];
+        data[i] = this._data[i];
       }
       this._data = data;
-      this._dataStart = 0;
-      this._dataLength = newLength;
     }
   }
 
@@ -130,7 +118,7 @@ export class LogicalLine implements ILogicalLine {
     for (let i = 0; i < this.trimmedLength; i++) {
       if (i > 0) { result += '; '; }
       result += `#${i}:`;
-      result += this._data[i * Constants.CELL_INDICIES + this._dataStart].toString(16);
+      result += this._data[i * Constants.CELL_INDICIES ].toString(16);
       const s = this.getString(i);
       if (s.length > 0) { result += `=${JSON.stringify(s)}`; }
     }
@@ -140,7 +128,7 @@ export class LogicalLine implements ILogicalLine {
 
   public getWidth(index: LogicalColumn): number {
     return index >= this.trimmedLength ? NULL_CELL_WIDTH
-      : this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT] >> Content.WIDTH_SHIFT;
+      : this._data[index * Constants.CELL_INDICIES + Cell.CONTENT] >> Content.WIDTH_SHIFT;
   }
 
   /**
@@ -163,7 +151,7 @@ export class LogicalLine implements ILogicalLine {
       cell.bg = this.backgroundColor;
       return cell;
     }
-    const startIndex = this._dataStart + index * Constants.CELL_INDICIES;
+    const startIndex = index * Constants.CELL_INDICIES;
     const content = this._data[startIndex + Cell.CONTENT];
     (cell as CellData)._string = content & Content.STORED_IN_CHARS_MASK
       ? this._chars : '';
@@ -188,7 +176,7 @@ export class LogicalLine implements ILogicalLine {
 
   public getExtended(index: LogicalColumn, validEnd: LogicalColumn = this.trimmedLength): IExtendedAttrs | undefined {
     return index < this.trimmedLength
-      && (this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.BG] & BgFlags.HAS_EXTENDED)
+      && (this._data[index * Constants.CELL_INDICIES + Cell.BG] & BgFlags.HAS_EXTENDED)
       ? this._extendedAttrs[index]
       : undefined;
   }
@@ -198,7 +186,7 @@ export class LogicalLine implements ILogicalLine {
     if (index >= this.trimmedLength) {
       return '';
     }
-    const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
+    const content = this._data[index * Constants.CELL_INDICIES + Cell.CONTENT];
     if (content & Content.STORED_IN_CHARS_MASK) {
       const start = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
       const length = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
@@ -217,7 +205,7 @@ export class LogicalLine implements ILogicalLine {
    * a single UTF32 codepoint or the last codepoint of a combined string.
    */
   public getCodePoint(index: LogicalColumn): number {
-    const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
+    const content = this._data[index * Constants.CELL_INDICIES + Cell.CONTENT];
     if (content & Content.STORED_IN_CHARS_MASK) {
       const start = (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
       const length = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
@@ -236,7 +224,7 @@ export class LogicalLine implements ILogicalLine {
     if (index >= this.trimmedLength) {
       return true;
     }
-    const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
+    const content = this._data[index * Constants.CELL_INDICIES + Cell.CONTENT];
     return ((content & Content.STORED_IN_CHARS_MASK)
       ? (content & Content.LENGTH_IN_CHARS_MASK) === 0
       : (content & Content.CODEPOINT_MASK) === 0)
@@ -245,7 +233,7 @@ export class LogicalLine implements ILogicalLine {
 
   /** Get state of protected flag. */
   public isProtected(index: number): number {
-    return this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.BG] & BgFlags.PROTECTED;
+    return this._data[index * Constants.CELL_INDICIES + Cell.BG] & BgFlags.PROTECTED;
   }
 
   public setCell(index: LogicalColumn, cell: ICellData): void {
@@ -262,7 +250,7 @@ export class LogicalLine implements ILogicalLine {
       } else {
         content = cell.getCode() | (width << Content.WIDTH_SHIFT);
       }
-      this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT] = content;
+      this._data[index * Constants.CELL_INDICIES + Cell.CONTENT] = content;
       return;
     }
     content = content & (Content.CODEPOINT_MASK|Content.IS_COMBINED_MASK);
@@ -284,7 +272,7 @@ export class LogicalLine implements ILogicalLine {
         // FIXME should also truncate extendedAttrs
         // remove any now-trailing nulls
         while (index > 0) {
-          const j = this._dataStart + (index - 1) * Constants.CELL_INDICIES;
+          const j = (index - 1) * Constants.CELL_INDICIES;
           const content = this._data[j + Cell.CONTENT];
           if ((content & Content.HAS_CONTENT_MASK)
             || (content & Content.WIDTH_MASK) !== 0
@@ -300,7 +288,7 @@ export class LogicalLine implements ILogicalLine {
     }
     if (index + width > this.trimmedLength && !isNull) {
       this.resizeData(index + width);
-      let j = this._dataStart + this.trimmedLength * Constants.CELL_INDICIES;
+      let j = this.trimmedLength * Constants.CELL_INDICIES;
       // If wide, we need to clean index+1 in addition.  We don't need
       // to clear index (as it get overwritten) but this is simple.
       const lastToClear = width <= 1 ? index - 1 : index + 1;
@@ -315,7 +303,7 @@ export class LogicalLine implements ILogicalLine {
     if (attrs.bg & BgFlags.HAS_EXTENDED) {
       this._extendedAttrs[index] = attrs.extended;
     }
-    const j = this._dataStart + index * Constants.CELL_INDICIES;
+    const j = index * Constants.CELL_INDICIES;
     this._data[j + Cell.CONTENT] = codePoint | (width << Content.WIDTH_SHIFT);
     this._data[j + Cell.FG] = attrs.fg;
     this._data[j + Cell.BG] = attrs.bg;
@@ -326,7 +314,7 @@ export class LogicalLine implements ILogicalLine {
     if (index + cols >= this.trimmedLength) {
       this.resizeData(index + cols, allocateBigBlock);
       for (let i = this.trimmedLength; i < index; i++) {
-        const j = this._dataStart + i * Constants.CELL_INDICIES;
+        const j = i * Constants.CELL_INDICIES;
         this._data[j + Cell.CONTENT] = NULL_CELL_WIDTH << Content.WIDTH_SHIFT;
         this._data[j + Cell.FG] = 0;
         this._data[j + Cell.BG] = this.backgroundColor;
@@ -338,7 +326,7 @@ export class LogicalLine implements ILogicalLine {
     const fg = attrs.fg;
     const bg = attrs.bg;
     const ext = (attrs.bg & BgFlags.HAS_EXTENDED) ? attrs.extended : undefined;
-    let j = this._dataStart + index * Constants.CELL_INDICIES;
+    let j = index * Constants.CELL_INDICIES;
     for (let i = start; i < end; i++) {
       const contents = codePoints[i];
       let width = (contents >>> Content.WIDTH_SHIFT);
@@ -368,7 +356,7 @@ export class LogicalLine implements ILogicalLine {
    * by the previous `setDataFromCodePoint` call, we can omit it here.
    */
   public addCodepointToCell(column: LogicalColumn, codePoint: number, width: number, attrs?: IAttributeData): void {
-    const dindex = this._dataStart + column * Constants.CELL_INDICIES;
+    const dindex = column * Constants.CELL_INDICIES;
     let content = column >= this.trimmedLength ? 0 : this._data[dindex + Cell.CONTENT];
     const oldWidth = (content & Content.WIDTH_MASK) >> Content.WIDTH_SHIFT;
     width = Math.max(width, 1);
@@ -428,7 +416,7 @@ export class LogicalLine implements ILogicalLine {
     let index = this.trimmedLength;
     while (index > 0) {
       index--;
-      const j = this._dataStart + index * Constants.CELL_INDICIES;
+      const j = index * Constants.CELL_INDICIES;
       const content = this._data[j + Cell.CONTENT];
       if (content & Content.HAS_CONTENT_MASK) {
         index++;
@@ -462,7 +450,7 @@ export class LogicalLine implements ILogicalLine {
       const cellContents: string[] = [];
       const llen = this.trimmedLength;
       let nchars = 0;
-      let j = this._dataStart + Cell.CONTENT;
+      let j = Cell.CONTENT;
       let prevWasWide = false;
       for (let i = 0; i < llen; i++) {
         const cstr = this.getString(i);
@@ -486,9 +474,9 @@ export class LogicalLine implements ILogicalLine {
     }
     if (startCol >= 0 && endCol >= 0) {
       if (startCol >= this.trimmedLength || endCol <= startCol) { return ''; }
-      const startContent = this._data[this._dataStart + startCol * Constants.CELL_INDICIES + Cell.CONTENT];
+      const startContent = this._data[startCol * Constants.CELL_INDICIES + Cell.CONTENT];
       const start = (startContent & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
-      const lastContent = this._data[this._dataStart + (endCol - 1) * Constants.CELL_INDICIES + Cell.CONTENT];
+      const lastContent = this._data[(endCol - 1) * Constants.CELL_INDICIES + Cell.CONTENT];
       const lastStart = (lastContent & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
       let lastLength = (lastContent & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
       if (lastLength === 0 && (lastContent >>> Content.WIDTH_SHIFT) > 0) {
@@ -504,7 +492,7 @@ export class LogicalLine implements ILogicalLine {
     if (index >= this.trimmedLength) {
       return this._chars.length;
     }
-    const content = this._data[this._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
+    const content = this._data[index * Constants.CELL_INDICIES + Cell.CONTENT];
     return (content & Content.START_IN_CHARS_MASK) >>> Content.START_IN_CHARS_SHIFT;
   }
 }
@@ -580,11 +568,11 @@ export class BufferLine implements IBufferLine {
     if (lindex >= this.validEnd) {
       return [0, '', NULL_CELL_WIDTH, 0];
     }
-    const content = lline._data[lline._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT];
+    const content = lline._data[index * Constants.CELL_INDICIES + Cell.CONTENT];
     const cp = content & Content.CODEPOINT_MASK;
     const str = lline.getString(lindex);
     return [
-      lline._data[lline._dataStart + lindex * Constants.CELL_INDICIES + Cell.FG],
+      lline._data[lindex * Constants.CELL_INDICIES + Cell.FG],
       str,
       content >> Content.WIDTH_SHIFT,
       (content & Content.IS_COMBINED_MASK)
@@ -620,7 +608,7 @@ export class BufferLine implements IBufferLine {
   public getFg(index: number): number {
     const lline = this._logicalLine;
     const lcolumn = index + this.startColumn;
-    return lcolumn >= this.validEnd ? 0 : lline._data[lline._dataStart + lcolumn * Constants.CELL_INDICIES + Cell.FG];
+    return lcolumn >= this.validEnd ? 0 : lline._data[lcolumn * Constants.CELL_INDICIES + Cell.FG];
   }
 
   /** Get BG cell component. */
@@ -628,7 +616,7 @@ export class BufferLine implements IBufferLine {
     index += this.startColumn;
     const lline = this._logicalLine;
     return index > lline.trimmedLength ? lline.backgroundColor
-      : lline._data[lline._dataStart + index * Constants.CELL_INDICIES + Cell.BG];
+      : lline._data[index * Constants.CELL_INDICIES + Cell.BG];
   }
 
   /**
@@ -642,7 +630,7 @@ export class BufferLine implements IBufferLine {
       return 0;
     }
     const lline = this._logicalLine;
-    return lline._data[lline._dataStart + index * Constants.CELL_INDICIES + Cell.CONTENT] & Content.HAS_CONTENT_MASK;
+    return lline._data[index * Constants.CELL_INDICIES + Cell.CONTENT] & Content.HAS_CONTENT_MASK;
   }
 
   /**
@@ -666,7 +654,7 @@ export class BufferLine implements IBufferLine {
     if (lcolumn >= this.validEnd) {
       return 0;
     }
-    return lline._data[lline._dataStart + lcolumn * Constants.CELL_INDICIES + Cell.CONTENT] & Content.IS_COMBINED_MASK;
+    return lline._data[lcolumn * Constants.CELL_INDICIES + Cell.CONTENT] & Content.IS_COMBINED_MASK;
   }
 
   /** Returns the string content of the cell. */
@@ -684,7 +672,7 @@ export class BufferLine implements IBufferLine {
     const lline = this._logicalLine;
     const lcolumn = index + this.startColumn;
     return index >= this.length || lcolumn >= lline.trimmedLength ? 0
-      : lline._data[lline._dataStart + lcolumn * Constants.CELL_INDICIES + Cell.BG] & BgFlags.PROTECTED;
+      : lline._data[lcolumn * Constants.CELL_INDICIES + Cell.BG] & BgFlags.PROTECTED;
   }
 
   /**
@@ -860,7 +848,7 @@ export class BufferLine implements IBufferLine {
       throw new Error('invalid call to resize');
     }
     if (cols === this.length) {
-      return logical._dataLength * 4 * Constants.CLEANUP_THRESHOLD < logical._data.buffer.byteLength;
+      return logical._data.length * Constants.CLEANUP_THRESHOLD < logical._data.buffer.byteLength;
     }
     const uint32Cells = cols * Constants.CELL_INDICIES;
     if (cols > this.length) {
@@ -872,8 +860,6 @@ export class BufferLine implements IBufferLine {
     } else {
       // optimization: just shrink the view on existing buffer
       logical._data = logical._data.subarray(0, cols * Constants.CELL_INDICIES);
-      logical._dataStart = 0;
-      logical._dataLength = cols * Constants.CELL_INDICIES;
       // remove any cut off extended attributes
       const extKeys = Object.keys(logical._extendedAttrs);
       for (let i = 0; i < extKeys.length; i++) {
@@ -938,7 +924,7 @@ export class BufferLine implements IBufferLine {
     const startColumn = this.startColumn;
     const data = logicalLine._data;
     for (let i = this.validEnd; --i >= startColumn; ) {
-      const j = logicalLine._dataStart + i * Constants.CELL_INDICIES;
+      const j = i * Constants.CELL_INDICIES;
       if (!logicalLine.isNullChar(i)
         || ((data[j + Cell.BG] & Attributes.CM_MASK))) {
         i += data[j + Cell.CONTENT] >> Content.WIDTH_SHIFT;
@@ -1001,9 +987,8 @@ export class BufferLine implements IBufferLine {
     const oldLogical = this._logicalLine;
     logicalLine.resizeData(column + oldLogical.trimmedLength);
     const newData = logicalLine._data;
-    const dataStart = logicalLine._dataStart;
     for (let i = logicalLine.trimmedLength; i < column + oldLogical.trimmedLength; i++) {
-      const i3 = dataStart + i * Constants.CELL_INDICIES;
+      const i3 = i * Constants.CELL_INDICIES;
       newData[i3 + Cell.CONTENT] = 0;
       newData[i3 + Cell.FG] = 0;
       newData[i3 + Cell.BG] = logicalLine.backgroundColor;
@@ -1083,7 +1068,7 @@ export class BufferLine implements IBufferLine {
     if (outColumns) {
       outColumns.length = 0;
       while (startCol < validEnd) {
-        const content = lline._data[lline._dataStart + startCol * Constants.CELL_INDICIES + Cell.CONTENT];
+        const content = lline._data[startCol * Constants.CELL_INDICIES + Cell.CONTENT];
         let length = (content & Content.LENGTH_IN_CHARS_MASK) >>> Content.LENGTH_IN_CHARS_SHIFT;
         const width = content >> Content.WIDTH_SHIFT;
         if (length === 0) { length = width; }
