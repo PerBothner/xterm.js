@@ -106,7 +106,7 @@ export class BufferLine implements IBufferLine {
   constructor(
     cols: number,
     fillCellData?: ICellData,
-    public isWrapped: boolean = false
+    isWrapped: boolean = false
   ) {
     this._data = new Uint32Array(cols * Constants.CELL_INDICIES);
     const cell = fillCellData ?? CellData.fromCharData([0, NULL_CELL_CHAR, NULL_CELL_WIDTH, NULL_CELL_CODE]);

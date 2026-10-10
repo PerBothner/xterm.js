@@ -51,7 +51,6 @@ export class Buffer extends Disposable implements IBuffer {
   private _isClearing: boolean = false;
   private _memoryCleanupQueue: InstanceType<typeof IdleTaskQueue>;
   private _memoryCleanupPosition = 0;
-  private readonly _stringCache: BufferLineStringCache;
 
   constructor(
     private _hasScrollback: boolean,
@@ -98,7 +97,7 @@ export class Buffer extends Disposable implements IBuffer {
   }
 
   public getBlankLine(attr: IAttributeData, isWrapped?: boolean): IBufferLine {
-    return new BufferLine(this._stringCache, this._bufferService.cols, this.getNullCell(attr), isWrapped);
+    return new BufferLine(this._bufferService.cols, this.getNullCell(attr), isWrapped);
   }
 
   public get hasScrollback(): boolean {
@@ -148,7 +147,6 @@ export class Buffer extends Disposable implements IBuffer {
    * Clears the buffer to its initial state, discarding all previous data.
    */
   public clear(): void {
-    this._stringCache.clear();
     this.ydisp = 0;
     this.ybase = 0;
     this.y = 0;
@@ -167,7 +165,6 @@ export class Buffer extends Disposable implements IBuffer {
   public resize(newCols: number, newRows: number): void {
     // store reference to null cell with default attrs
     const nullCell = this.getNullCell(DEFAULT_ATTR_DATA);
-    this._stringCache.clear();
 
     // count bufferlines with overly big memory to be cleaned afterwards
     let dirtyMemoryLines = 0;

@@ -515,7 +515,7 @@ describe('DomRendererRowFactory', () => {
   }
 
   function createEmptyLineData(cols: number): IBufferLine {
-    const lineData = new BufferLine(TEST_STRING_CACHE, cols);
+    const lineData = new BufferLine(cols);
     for (let i = 0; i < cols; i++) {
       lineData.setCell(i, NULL_CELL_DATA);
     }

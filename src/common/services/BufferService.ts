@@ -5,6 +5,7 @@
 
 import { Disposable } from '../Lifecycle';
 import { IAttributeData, IBuffer, IBufferLine, IBufferSet } from '../buffer/Types';
+import { BufferLine } from '../buffer/BufferLine';
 import { BufferSet } from '../buffer/BufferSet';
 import { IBufferService, ILogService, IOptionsService, type IBufferResizeEvent } from './Services';
 import { Emitter } from '../Event';
