@@ -3,14 +3,32 @@
  * @license MIT
  */
 
-import { IParsingState, IDcsHandler, IEscapeSequenceParser, IParams, IOscHandler, IHandlerCollection, CsiHandlerType, OscFallbackHandlerType, IOscParser, EscHandlerType, IDcsParser, DcsFallbackHandlerType, IFunctionIdentifier, ExecuteFallbackHandlerType, CsiFallbackHandlerType, EscFallbackHandlerType, PrintHandlerType, PrintFallbackHandlerType, ExecuteHandlerType, IParserStackState, ParserStackType, ResumableHandlersType, IApcHandler, IApcParser, ApcFallbackHandlerType } from 'common/parser/Types';
-import { ParserState, ParserAction } from 'common/parser/Constants';
-import { Disposable, toDisposable } from 'common/Lifecycle';
-import { IDisposable } from 'common/Types';
-import { Params } from 'common/parser/Params';
-import { OscParser } from 'common/parser/OscParser';
-import { DcsParser } from 'common/parser/DcsParser';
-import { ApcParser } from 'common/parser/ApcParser';
+import { IParsingState, IDcsHandler, IEscapeSequenceParser, IParams, IOscHandler, IHandlerCollection, CsiHandlerType, OscFallbackHandlerType, IOscParser, EscHandlerType, IDcsParser, DcsFallbackHandlerType, IFunctionIdentifier, ExecuteFallbackHandlerType, CsiFallbackHandlerType, EscFallbackHandlerType, PrintHandlerType, PrintFallbackHandlerType, ExecuteHandlerType, IParserStackState, ParserStackType, ResumableHandlersType, IApcHandler, IApcParser, ApcFallbackHandlerType } from './Types';
+import { ParserState, ParserAction } from './Constants';
+import { Disposable, toDisposable } from '../Lifecycle';
+import { IDisposable } from '../Types';
+import { Params } from './Params';
+import { OscParser } from './OscParser';
+import { DcsParser } from './DcsParser';
+import { ApcParser } from './ApcParser';
+
+/**
+ * VT commands done by the parser
+ */
+// @vt: #Y   ESC   CSI   "Control Sequence Introducer"   "ESC ["   "Start of a CSI sequence."
+// @vt: #Y   ESC   OSC   "Operating System Command"      "ESC ]"   "Start of an OSC sequence."
+// @vt: #Y   ESC   DCS   "Device Control String"         "ESC P"   "Start of a DCS sequence."
+// @vt: #Y   ESC   ST    "String Terminator"             "ESC \\"  "Terminator used for string type sequences."
+// @vt: #Y   ESC   PM    "Privacy Message"               "ESC ^"   "Start of a privacy message."
+// @vt: #Y   ESC   APC   "Application Program Command"   "ESC _"   "Start of an APC sequence."
+// @vt: #Y   C1    CSI   "Control Sequence Introducer"   "\x9B"    "Start of a CSI sequence."
+// @vt: #Y   C1    OSC   "Operating System Command"      "\x9D"    "Start of an OSC sequence."
+// @vt: #Y   C1    DCS   "Device Control String"         "\x90"    "Start of a DCS sequence."
+// @vt: #Y   C1    ST    "String Terminator"             "\x9C"    "Terminator used for string type sequences."
+// @vt: #Y   C1    PM    "Privacy Message"               "\x9E"    "Start of a privacy message."
+// @vt: #Y   C1    APC   "Application Program Command"   "\x9F"    "Start of an APC sequence."
+// @vt: #Y   C0    NUL   "Null"                          "\0, \x00"  "NUL is ignored."
+// @vt: #Y   C0    ESC   "Escape"                        "\e, \x1B"  "Start of a sequence. Cancels any other sequence."
 
 /**
  * VT commands done by the parser
@@ -243,7 +261,7 @@ export const VT500_TRANSITION_TABLE = (function (): TransitionTable {
  *
  * This parser is currently hardcoded to operate in ZDM (Zero Default Mode)
  * as suggested by the original parser, thus empty parameters are set to 0.
- * This this is not in line with the latest ECMA-48 specification
+ * This is not in line with the latest ECMA-48 specification
  * (ZDM was part of the early specs and got completely removed later on).
  *
  * Other than the original parser from vt100.net this parser supports
@@ -342,7 +360,7 @@ export class EscapeSequenceParser extends Disposable implements IEscapeSequenceP
         throw new Error('only one byte as prefix supported');
       }
       res = id.prefix.charCodeAt(0);
-      if (res && 0x3c > res || res > 0x3f) {
+      if (res < 0x3c || res > 0x3f) {
         throw new Error('prefix must be in range 0x3c .. 0x3f');
       }
     }
@@ -572,8 +590,8 @@ export class EscapeSequenceParser extends Disposable implements IEscapeSequenceP
    * ```
    */
   public parse(data: Uint32Array, length: number, promiseResult?: boolean): void | Promise<boolean> {
-    let code = 0;
-    let transition = 0;
+    let code: number;
+    let transition: number;
     let start = 0;
     let handlerResult: void | boolean | Promise<boolean>;
 

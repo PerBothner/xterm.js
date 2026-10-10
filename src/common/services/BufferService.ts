@@ -3,13 +3,11 @@
  * @license MIT
  */
 
-import { Disposable } from 'common/Lifecycle';
-import { IAttributeData, IBufferLine } from 'common/Types';
-import { BufferSet } from 'common/buffer/BufferSet';
-import { BufferLine } from 'common/buffer/BufferLine';
-import { IBuffer, IBufferSet } from 'common/buffer/Types';
-import { IBufferService, ILogService, IOptionsService, type IBufferResizeEvent } from 'common/services/Services';
-import { Emitter } from 'common/Event';
+import { Disposable } from '../Lifecycle';
+import { IAttributeData, IBuffer, IBufferLine, IBufferSet } from '../buffer/Types';
+import { BufferSet } from '../buffer/BufferSet';
+import { IBufferService, ILogService, IOptionsService, type IBufferResizeEvent } from './Services';
+import { Emitter } from '../Event';
 
 export const enum BufferServiceConstants {
   MINIMUM_COLS = 2, // Less than 2 can mess with wide chars
@@ -88,12 +86,12 @@ export class BufferService extends Disposable implements IBufferService {
       // Insert the line using the fastest method
       if (bottomRow === buffer.lines.length - 1) {
         if (willBufferBeTrimmed) {
-          buffer.lines.recycle().copyFrom(newLine);
+          buffer.lines.recycle().copyFrom(newLine, true);
         } else {
-          buffer.lines.push(newLine.clone());
+          buffer.lines.push(newLine.clone(true));
         }
       } else {
-        buffer.lines.splice(bottomRow + 1, 0, newLine.clone());
+        buffer.lines.splice(bottomRow + 1, 0, newLine.clone(true));
       }
 
       // Only adjust ybase and ydisp when the buffer is not trimmed
@@ -115,7 +113,7 @@ export class BufferService extends Disposable implements IBufferService {
       // scrollback, instead we can just shift them in-place.
       const scrollRegionHeight = bottomRow - topRow + 1 /* as it's zero-based */;
       buffer.lines.shiftElements(topRow + 1, scrollRegionHeight - 1, -1);
-      buffer.lines.set(bottomRow, newLine.clone());
+      buffer.lines.set(bottomRow, newLine.clone(true));
     }
 
     // Move the viewport to the bottom of the buffer unless the user is

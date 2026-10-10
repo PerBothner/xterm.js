@@ -3,20 +3,19 @@
  * @license MIT
  */
 
-import { CircularList, IInsertEvent } from 'common/CircularList';
-import { Disposable, toDisposable } from 'common/Lifecycle';
-import { IdleTaskQueue } from 'common/TaskQueue';
-import { IAttributeData, IBufferLine, ICellData, ICharset } from 'common/Types';
-import { ExtendedAttrs } from 'common/buffer/AttributeData';
-import { BufferLine, DEFAULT_ATTR_DATA } from 'common/buffer/BufferLine';
-import { BufferLineStringCache } from 'common/buffer/BufferLineStringCache';
-import { getWrappedLineTrimmedLength, reflowLargerApplyNewLayout, reflowLargerCreateNewLayout, reflowLargerGetLinesToRemove, reflowSmallerGetNewLineLengths } from 'common/buffer/BufferReflow';
-import { CellData } from 'common/buffer/CellData';
-import { NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR, WHITESPACE_CELL_CODE, WHITESPACE_CELL_WIDTH } from 'common/buffer/Constants';
-import { Marker } from 'common/buffer/Marker';
-import { IBuffer } from 'common/buffer/Types';
-import { DEFAULT_CHARSET } from 'common/data/Charsets';
-import { IBufferService, ILogService, IOptionsService } from 'common/services/Services';
+import { CircularList, IInsertEvent } from '../CircularList';
+import { Disposable, toDisposable } from '../Lifecycle';
+import { IdleTaskQueue } from '../TaskQueue';
+import { ICharset } from '../Types';
+import { IAttributeData, IBuffer, IBufferLine, ICellData } from './Types';
+import { ExtendedAttrs } from './AttributeData';
+import { BufferLine, DEFAULT_ATTR_DATA } from './BufferLine';
+import { getWrappedLineTrimmedLength, reflowLargerApplyNewLayout, reflowLargerCreateNewLayout, reflowLargerGetLinesToRemove, reflowSmallerGetNewLineLengths } from './BufferReflow';
+import { CellData } from './CellData';
+import { NULL_CELL_CHAR, NULL_CELL_CODE, NULL_CELL_WIDTH, WHITESPACE_CELL_CHAR, WHITESPACE_CELL_CODE, WHITESPACE_CELL_WIDTH } from './Constants';
+import { Marker } from './Marker';
+import { DEFAULT_CHARSET } from '../data/Charsets';
+import { IBufferService, ILogService, IOptionsService } from '../services/Services';
 
 export const MAX_BUFFER_SIZE = 4294967295; // 2^32 - 1
 
@@ -70,7 +69,6 @@ export class Buffer extends Disposable implements IBuffer {
     this._memoryCleanupQueue = new IdleTaskQueue(this._logService);
     this._register(toDisposable(() => this._memoryCleanupQueue.clear()));
     this._register(toDisposable(() => this.clearAllMarkers()));
-    this._stringCache = this._register(new BufferLineStringCache());
   }
 
   public getNullCell(attr?: IAttributeData): ICellData {
@@ -202,9 +200,9 @@ export class Buffer extends Disposable implements IBuffer {
         for (let y = this._rows; y < newRows; y++) {
           if (this.lines.length < newRows + this.ybase) {
             if (this._optionsService.rawOptions.windowsPty.backend !== undefined || this._optionsService.rawOptions.windowsPty.buildNumber !== undefined) {
-              // Just add the new missing rows on Windows as conpty reprints the screen with it's
+              // Just add the new missing rows on Windows as conpty reprints the screen with its
               // view of the world. Once a line enters scrollback for conpty it remains there
-              this.lines.push(new BufferLine(this._stringCache, newCols, nullCell, false));
+              this.lines.push(new BufferLine(newCols, nullCell, false));
             } else {
               if (this.ybase > 0 && this.lines.length <= this.ybase + this.y + addToY + 1) {
                 // There is room above the buffer and there are no empty elements below the line,
@@ -218,7 +216,7 @@ export class Buffer extends Disposable implements IBuffer {
               } else {
                 // Add a blank line if there is no buffer left at the top to scroll to, or if there
                 // are blank lines after the cursor
-                this.lines.push(new BufferLine(this._stringCache, newCols, nullCell, false));
+                this.lines.push(new BufferLine(newCols, nullCell, false));
               }
             }
           }
@@ -359,7 +357,7 @@ export class Buffer extends Disposable implements IBuffer {
         }
         if (this.lines.length < newRows) {
           // Add an extra row at the bottom of the viewport
-          this.lines.push(new BufferLine(this._stringCache, newCols, nullCell, false));
+          this.lines.push(new BufferLine(newCols, nullCell, false));
         }
       } else {
         if (this.ydisp === this.ybase) {
