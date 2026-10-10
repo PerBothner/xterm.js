@@ -10,6 +10,7 @@ import { assert } from 'chai';
 import { AttributeData } from './AttributeData';
 import { createCellData, NULL_CELL_DATA, extendedAttributes } from '../TestUtils.test';
 
+
 class TestBufferLine extends BufferLine {
   constructor(cols: number, fillCellData?: ICellData, isWrapped: boolean = false) {
     super(cols, fillCellData, isWrapped);

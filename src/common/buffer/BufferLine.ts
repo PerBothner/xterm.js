@@ -51,18 +51,6 @@ const $workCell = new CellData();
 const $extended = DEFAULT_ATTR_DATA.extended.clone() as IExtendedAttrsExt;
 
 
-export interface IBufferLineStringCacheEntry {
-  value: string | undefined;
-  isTrimmed: boolean;
-  generation: number;
-}
-
-export interface IBufferLineStringCache {
-  generation: number;
-  allocateEntry(): IBufferLineStringCacheEntry;
-  touch?(): void;
-}
-
 /**
  * Typed array based bufferline implementation.
  *
@@ -84,7 +72,6 @@ export class BufferLine implements IBufferLine {
   protected _combined: {[index: number]: string} = {};
   /** Sparse cache; only read when `HAS_EXTENDED` is set in `_data`. */
   protected _extendedAttrs: {[index: number]: IExtendedAttrs | undefined} = {};
-  protected _stringCacheEntryRef: WeakRef<IBufferLineStringCacheEntry> | undefined;
   public length: number;
   private _isWrapped: boolean;
 
